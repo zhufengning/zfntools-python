@@ -1,0 +1,20 @@
+{
+  "name": "CyberChef",
+  "description": "用于数据分析、编码解码、加密解密等操作的综合工具",
+  "version": "10.19.4",
+  "entry": "CyberChef_v10.19.4.html",
+  "author": "GCHQ",
+  "homepage": "https://gchq.github.io/CyberChef/",
+  "type": "web",
+  "permissions": [
+    "file-access"
+  ],
+  "tags": [
+    "编码",
+    "解码",
+    "加密",
+    "解密",
+    "数据分析",
+    "格式转换"
+  ]
+}

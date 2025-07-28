@@ -3,9 +3,11 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QColorDialog, QPushButton, QLabel, QHBoxLayout
 from PySide6.QtGui import QColor, QPalette, QFont
 from PySide6.QtCore import Qt
+from plugin_system import PluginType
 
 TOOL_NAME = "颜色选择器"
 TOOL_DESCRIPTION = "从调色板中选择颜色并获取其不同格式的值。"
+PLUGIN_TYPE = PluginType.WIDGET
 
 class ToolWidget(QWidget):
     def __init__(self, parent=None):

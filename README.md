@@ -9,46 +9,142 @@ Python 工具箱是一个桌面应用程序，提供了一个统一的界面来�
 ## 主要功能
 
 - **多标签页界面**：支持同时打开多个工具，每个工具在独立的标签页中运行
-- **插件系统**：动态加载 `plugins` 目录下的工具插件
-- **工具搜索**：在首页提供搜索功能，快速找到需要的工具
-- **可扩展架构**：开发者可以轻松添加新的工具插件
+- **多类型插件系统**：支持界面插件、无界面插件、搜索插件和Web插件
+- **智能搜索**：在首页提供统一搜索功能，同时搜索本地插件和外部资源
+- **可扩展架构**：开发者可以轻松添加各种类型的插件
 
-## 内置工具
+## 内置插件
 
-### 1. 进制转换器
+### 界面插件 (Widget Plugins)
+
+#### 1. 进制转换器
 - **功能**：在二进制、十进制、十六进制之间转换数字
 - **特点**：实时转换，输入任意进制的数字，自动显示其他进制的对应值
 
-### 2. 颜色选择器
+#### 2. 颜色选择器
 - **功能**：从调色板中选择颜色并获取其不同格式的值
 - **支持格式**：HEX、RGB、HSL
 - **特点**：可视化颜色预览，自动调整文本颜色以确保对比度
 
-### 3. CyberChef 集成
+### 无界面插件 (Action Plugins)
+
+#### 3. 快捷关机
+- **功能**：一键关闭计算机
+- **特点**：点击后确认执行，无需打开额外界面
+
+### 搜索插件 (Search Plugins)
+
+#### 4. 开始菜单搜索
+- **功能**：搜索Windows开始菜单中的应用程序
+- **特点**：在主搜索框中输入应用名称，直接启动应用程序
+
+### Web插件 (Web Plugins)
+
+#### 5. CyberChef
 - **功能**：集成了 CyberChef 工具的本地版本
 - **用途**：数据分析、编码解码、加密解密等
+- **特点**：在独立标签页中运行，支持完整的Web功能
 
 ## 技术栈
 
-- **Python 3.13+**
-- **PySide6**：用于构建桌面GUI界面
-- **插件架构**：基于动态模块加载
+- **Python 3.13+**：主要编程语言
+- **PySide6**：GUI框架，提供现代化的用户界面
+- **PySide6-WebEngine**：Web插件支持
+- **Qt Designer**：用于设计用户界面（可选）
+- **模块化架构**：支持多种类型的插件系统
+
+## 插件开发指南
+
+### 界面插件 (Widget Plugin)
+
+在 `plugins/your_plugin_name/tool.py` 中定义：
+
+```python
+from PySide6.QtWidgets import QWidget
+from plugin_system import PluginType
+
+TOOL_NAME = "插件名称"
+TOOL_DESCRIPTION = "插件描述"
+PLUGIN_TYPE = PluginType.WIDGET
+
+class ToolWidget(QWidget):
+    def __init__(self):
+        super().__init__()
+        # 初始化界面
+```
+
+### 无界面插件 (Action Plugin)
+
+```python
+from plugin_system import PluginType
+
+TOOL_NAME = "插件名称"
+TOOL_DESCRIPTION = "插件描述"
+PLUGIN_TYPE = PluginType.ACTION
+
+def execute():
+    # 执行操作的代码
+    pass
+```
+
+### 搜索插件 (Search Plugin)
+
+```python
+from plugin_system import PluginType, SearchResult
+
+TOOL_NAME = "插件名称"
+TOOL_DESCRIPTION = "插件描述"
+PLUGIN_TYPE = PluginType.SEARCH
+
+def search(query):
+    # 返回 SearchResult 列表
+    return [SearchResult("标题", "描述", "数据")]
+
+def execute(result_data):
+    # 执行搜索结果
+    pass
+```
+
+### Web插件 (Web Plugin)
+
+在 `plugins/your_plugin_name/manifest.json` 中定义：
+
+```json
+{
+    "name": "插件名称",
+    "description": "插件描述",
+    "version": "1.0.0",
+    "entry": "index.html",
+    "author": "作者",
+    "homepage": "主页URL",
+    "type": "web",
+    "permissions": [],
+    "tags": ["标签"]
+}
+```
 
 ## 项目结构
 
 ```
-test2/
-├── main.py                 # 主应用程序入口
-├── pyproject.toml          # 项目配置文件
-├── plugins/                # 插件目录
-│   ├── base_converter/     # 进制转换器插件
-│   │   └── tool.py
-│   ├── color_picker/       # 颜色选择器插件
-│   │   └── tool.py
-│   └── CyberChef/         # CyberChef 工具集成
-│       ├── CyberChef_v10.19.4.html
-│       └── ...
-└── README.md              # 项目说明文档
+python-toolbox/
+├── main.py                    # 主程序入口
+├── plugin_system.py           # 插件系统核心
+├── pyproject.toml            # 项目配置文件
+├── requirements.txt          # 依赖列表
+├── README.md                # 项目说明文档
+└── plugins/                 # 插件目录
+    ├── base_converter/      # 界面插件：进制转换器
+    │   └── tool.py
+    ├── color_picker/        # 界面插件：颜色选择器
+    │   └── tool.py
+    ├── quick_shutdown/      # 无界面插件：快捷关机
+    │   └── tool.py
+    ├── start_menu_search/   # 搜索插件：开始菜单搜索
+    │   └── tool.py
+    └── CyberChef/          # Web插件：CyberChef工具
+        ├── manifest.json
+        ├── index.html
+        └── ...
 ```
 
 ## 安装和运行

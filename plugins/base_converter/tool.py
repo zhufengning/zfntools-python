@@ -2,9 +2,11 @@
 
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QFormLayout, QLineEdit
 from PySide6.QtGui import QIntValidator
+from plugin_system import PluginType
 
 TOOL_NAME = "进制转换"
 TOOL_DESCRIPTION = "在不同进制（二进制、十进制、十六进制）之间转换数字。"
+PLUGIN_TYPE = PluginType.WIDGET
 
 class ToolWidget(QWidget):
     def __init__(self, parent=None):

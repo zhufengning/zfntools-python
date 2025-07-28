@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "python-toolbox"
-version = "0.1.0"
-description = "A multi-tab toolbox application with extensible plugins."
+version = "0.2.0"
+description = "A multi-tab toolbox application with extensible plugins supporting widget, action, search, and web plugins."
 requires-python = ">=3.13"
 dependencies = [
     "PySide6",
