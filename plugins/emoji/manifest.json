@@ -1,0 +1,12 @@
+{
+  "name": "Emoji",
+  "description": "Emoji搜索",
+  "version": "1.0",
+  "entry": "index.html",
+  "author": "muan",
+  "homepage": "https://github.com/muan/emoji/",
+  "type": "web",
+  "tags": [
+    "emoji"
+  ]
+}

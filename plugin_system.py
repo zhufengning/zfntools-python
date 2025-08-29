@@ -6,6 +6,7 @@ from typing import List, Dict, Any, Optional
 from PySide6.QtWidgets import QWidget
 import json
 import os
+from search_engine import SearchableItem, get_search_engine
 
 class PluginType(Enum):
     """插件类型枚举"""
@@ -75,6 +76,31 @@ class SearchPlugin(BasePlugin):
     def execute_result(self, result: SearchResult) -> None:
         """执行搜索结果"""
         pass
+    
+    def create_search_engine(self) -> 'SearchEngine':
+        """创建搜索引擎实例供插件使用"""
+        from search_engine import SearchEngine
+        return SearchEngine()
+    
+    def search_items(self, query: str, items: List[SearchableItem], max_results: int = 20) -> List[SearchResult]:
+        """使用搜索引擎搜索项目列表"""
+        engine = self.create_search_engine()
+        engine.add_items(items)
+        
+        search_results = engine.search(query, max_results)
+        
+        # 转换为SearchResult格式
+        results = []
+        for item, score in search_results:
+            result = SearchResult(
+                title=item.title,
+                description=item.description,
+                plugin_name=self.get_name(),
+                data=item.data
+            )
+            results.append(result)
+        
+        return results
 
 class WebPlugin(BasePlugin):
     """Web插件"""
@@ -223,27 +249,40 @@ class PluginLoader:
     @staticmethod
     def _create_search_plugin(plugin_dir: str, module) -> Optional[SearchPlugin]:
         """创建搜索插件包装器"""
-        class SearchPluginWrapper(SearchPlugin):
-            def __init__(self):
-                super().__init__(plugin_dir)
-                self.name = getattr(module, 'TOOL_NAME', '未命名工具')
-                self.description = getattr(module, 'TOOL_DESCRIPTION', '')
-                self.search_func = getattr(module, 'search')
-                self.execute_result_func = getattr(module, 'execute_result')
-            
-            def get_name(self) -> str:
-                return self.name
-            
-            def get_description(self) -> str:
-                return self.description
-            
-            def get_type(self) -> PluginType:
-                return PluginType.SEARCH
-            
-            def search(self, query: str) -> List[SearchResult]:
-                return self.search_func(query)
-            
-            def execute_result(self, result: SearchResult) -> None:
-                self.execute_result_func(result)
+        # 首先检查是否有基于类的搜索插件
+        for attr_name in dir(module):
+            attr = getattr(module, attr_name)
+            if (isinstance(attr, type) and 
+                issubclass(attr, SearchPlugin) and 
+                attr != SearchPlugin):
+                # 找到了SearchPlugin的子类，直接实例化
+                return attr(plugin_dir)
         
-        return SearchPluginWrapper()
+        # 如果没有找到类，尝试使用传统的函数接口
+        if hasattr(module, 'search') and hasattr(module, 'execute_result'):
+            class SearchPluginWrapper(SearchPlugin):
+                def __init__(self):
+                    super().__init__(plugin_dir)
+                    self.name = getattr(module, 'TOOL_NAME', '未命名工具')
+                    self.description = getattr(module, 'TOOL_DESCRIPTION', '')
+                    self.search_func = getattr(module, 'search')
+                    self.execute_result_func = getattr(module, 'execute_result')
+                
+                def get_name(self) -> str:
+                    return self.name
+                
+                def get_description(self) -> str:
+                    return self.description
+                
+                def get_type(self) -> PluginType:
+                    return PluginType.SEARCH
+                
+                def search(self, query: str) -> List[SearchResult]:
+                    return self.search_func(query)
+                
+                def execute_result(self, result: SearchResult) -> None:
+                    self.execute_result_func(result)
+            
+            return SearchPluginWrapper()
+        
+        return None

@@ -9,4 +9,5 @@ description = "A multi-tab toolbox application with extensible plugins supportin
 requires-python = ">=3.13"
 dependencies = [
     "PySide6",
+    "pypinyin",
 ]
