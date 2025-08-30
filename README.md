@@ -28,6 +28,10 @@ Python 工具箱是一个桌面应用程序，它提供了一个统一的、美�
 .\build.ps1
 ```
 
+### PyInstaller 打包优化
+
+为了确保打包后的应用程序在执行外部命令时不会弹出 PowerShell 窗口，项目中的所有 `subprocess.run` 调用都已配置了 `startupinfo` 参数来隐藏控制台窗口。这个优化特别针对 Windows 系统和 PyInstaller 打包环境。
+
 ## 内置插件
 
 ### 界面插件 (Widget Plugins)

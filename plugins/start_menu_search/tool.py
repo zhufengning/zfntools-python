@@ -48,7 +48,14 @@ class StartMenuSearchPlugin(SearchPlugin):
             powershell_cmd = ['powershell', '-Command', ps_command]
             
             # 以二进制模式捕获输出，然后尝试不同的编码
-            result = subprocess.run(powershell_cmd, capture_output=True, text=False)
+            # 在 Windows 上隐藏控制台窗口（特别是在 PyInstaller 打包后）
+            startupinfo = None
+            if os.name == 'nt':  # Windows
+                startupinfo = subprocess.STARTUPINFO()
+                startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                startupinfo.wShowWindow = subprocess.SW_HIDE
+            
+            result = subprocess.run(powershell_cmd, capture_output=True, text=False, startupinfo=startupinfo)
             
             # 尝试解码输出
             stdout_text = ""
@@ -145,7 +152,15 @@ class StartMenuSearchPlugin(SearchPlugin):
                 app_id = result_data['app_id']
                 # Using Start-Process with Shell:AppsFolder to launch the app by its AppID
                 command = f'Start-Process "shell:AppsFolder\\{app_id}"'
-                subprocess.run(['powershell', '-Command', command], check=True)
+                
+                # 在 Windows 上隐藏控制台窗口（特别是在 PyInstaller 打包后）
+                startupinfo = None
+                if os.name == 'nt':  # Windows
+                    startupinfo = subprocess.STARTUPINFO()
+                    startupinfo.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+                    startupinfo.wShowWindow = subprocess.SW_HIDE
+                
+                subprocess.run(['powershell', '-Command', command], check=True, startupinfo=startupinfo)
         except Exception as e:
             print(f"启动应用程序失败: {e}")
     
