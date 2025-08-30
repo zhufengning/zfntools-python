@@ -1,175 +1,199 @@
 # Python 工具箱
 
-一个基于 PySide6 的多标签页工具箱应用程序，支持可扩展的插件系统。
+一个基于 PySide6 的多标签页工具箱应用程序，拥有一个支持多种插件类型的现代化、可扩展的插件系统。
 
 ## 项目简介
 
-Python 工具箱是一个桌面应用程序，提供了一个统一的界面来使用各种实用工具。应用程序采用插件架构，可以轻松添加新的工具功能。
+Python 工具箱是一个桌面应用程序，它提供了一个统一的、美观的界面来发现和使用各种实用工具。应用程序的核心是其插件架构，允许开发者轻松地创建和集成新的功能。
 
 ## 主要功能
 
-- **多标签页界面**：支持同时打开多个工具，每个工具在独立的标签页中运行
-- **多类型插件系统**：支持界面插件、无界面插件、搜索插件和Web插件
-- **智能搜索**：在首页提供高级搜索功能，支持忽略大小写、英文首字母搜索、中文拼音搜索和拼音首字母搜索
-- **可扩展架构**：开发者可以轻松添加各种类型的插件
+- **多标签页界面**：支持同时打开多个工具，每个工具在独立的标签页中运行，互不干扰。
+- **现代化插件系统**：
+  - **多类型支持**：支持界面插件、无界面插件、搜索插件和Web插件。
+  - **面向对象**：插件通过继承基类 (`WidgetPlugin`, `ActionPlugin`, `SearchPlugin`) 来实现，结构清晰。
+  - **自动发现**：插件放置在 `plugins` 目录中即可被自动加载。
+  - **数据持久化**：每个插件都有自己的数据目录，通过 `get_data_dir()` 方法访问。
+- **异步智能搜索**：
+  - **即时搜索**：在主页的搜索框中输入，即可实时搜索所有可用的工具和来自搜索插件的内容。
+  - **多源搜索**：同时从本地工具和所有已安装的搜索插件中获取结果。
+  - **高级匹配**：支持忽略大小写、英文首字母、中文拼音及拼音首字母进行模糊搜索。
+- **可扩展架构**：设计时充分考虑了可扩展性，开发者可以轻松地创建和分享自己的插件。
+
+## 构建
+
+要从源代码构建应用程序，请运行位于项目根目录下的 `build.ps1` 脚本。此脚本使用 `pyinstaller` 和 `main.spec` 文件来打包应用程序及其所有依赖项和资源。
+
+```powershell
+.\build.ps1
+```
 
 ## 内置插件
 
 ### 界面插件 (Widget Plugins)
 
 #### 1. 进制转换器
-- **功能**：在二进制、十进制、十六进制之间转换数字
-- **特点**：实时转换，输入任意进制的数字，自动显示其他进制的对应值
+- **功能**：在二进制、十进制、十六进制之间进行实时转换。
+- **特点**：在一个输入框中输入，其他进制的数值会立即更新。
 
 #### 2. 颜色选择器
-- **功能**：从调色板中选择颜色并获取其不同格式的值
-- **支持格式**：HEX、RGB、HSL
-- **特点**：可视化颜色预览，自动调整文本颜色以确保对比度
+- **功能**：从调色板中选择颜色，并获取其 HEX、RGB 和 HSL 格式的值。
+- **特点**：提供颜色预览，并自动调整文本颜色以确保可读性。
+
+#### 3. 文件夹整理工具
+- **功能**：根据文件的扩展名，将指定文件夹中的文件批量移动到按类别命名的子文件夹中。
+- **特点**：分类规则（JSON格式）可由用户自定义并自动保存。
 
 ### 无界面插件 (Action Plugins)
 
-#### 3. 快捷关机
-- **功能**：一键关闭计算机
-- **特点**：点击后确认执行，无需打开额外界面
+#### 4. 快捷关机
+- **功能**：提供一个一键关闭计算机的快捷操作。
+- **特点**：执行前会弹出确认对话框，防止误操作。
 
 ### 搜索插件 (Search Plugins)
 
-#### 4. 开始菜单搜索
-- **功能**：搜索Windows开始菜单中的应用程序
-- **特点**：在主搜索框中输入应用名称，直接启动应用程序
+#### 5. 开始菜单搜索
+- **功能**：搜索并启动 Windows 开始菜单中的所有应用程序（包括传统快捷方式和商店应用）。
+- **特点**：通过 `Get-StartApps` 命令获取应用列表，使用 `AppID` 启动，兼容性好。
 
 ### Web插件 (Web Plugins)
 
-#### 5. CyberChef
-- **功能**：集成了 CyberChef 工具的本地版本
-- **用途**：数据分析、编码解码、加密解密等
-- **特点**：在独立标签页中运行，支持完整的Web功能
+#### 6. CyberChef
+- **功能**：集成了强大的网络瑞士军刀 CyberChef 的本地版本。
+- **用途**：用于数据转换、编码解码、加密解密等多种操作。
+
+#### 7. Emoji
+- **功能**：提供一个 Emoji 表情符号的搜索和复制工具。
 
 ## 技术栈
 
-- **Python 3.13+**：主要编程语言
-- **PySide6**：GUI框架，提供现代化的用户界面
-- **pypinyin**：中文拼音搜索支持
-- **Qt Designer**：用于设计用户界面（可选）
-- **模块化架构**：支持多种类型的插件系统
-- **高级搜索引擎**：支持多种搜索模式的智能搜索
+- **Python 3.13+**：项目的主要编程语言。
+- **PySide6**：用于构建现代化用户界面的 GUI 框架。
+- **pypinyin**：为搜索引擎提供中文拼音搜索能力。
+- **模块化架构**：基于类的插件系统，易于扩展和维护。
 
 ## 插件开发指南
 
-### 界面插件 (Widget Plugin)
+新的插件系统使用基于类的结构。要创建一个插件，你需要在 `plugins` 目录下创建一个新的文件夹，并在其中创建一个 `tool.py` 文件。
 
-在 `plugins/your_plugin_name/tool.py` 中定义：
+### 1. 界面插件 (WidgetPlugin)
 
+这种插件会创建一个在标签页中显示的界面 (QWidget)。
+
+**示例: `plugins/my_widget_plugin/tool.py`**
 ```python
-from PySide6.QtWidgets import QWidget
-from plugin_system import PluginType
+from PySide6.QtWidgets import QWidget, QLabel, QVBoxLayout
+from plugin_system import WidgetPlugin, PluginType
 
-TOOL_NAME = "插件名称"
-TOOL_DESCRIPTION = "插件描述"
-PLUGIN_TYPE = PluginType.WIDGET
-
-class ToolWidget(QWidget):
-    def __init__(self):
+class MyWidget(QWidget):
+    def __init__(self, plugin_instance):
         super().__init__()
-        # 初始化界面
+        # 访问插件实例，例如获取数据目录
+        self.plugin = plugin_instance 
+        layout = QVBoxLayout(self)
+        layout.addWidget(QLabel("这是一个界面插件!"))
+
+class MyWidgetPlugin(WidgetPlugin):
+    def __init__(self, plugin_dir: str):
+        super().__init__(plugin_dir)
+
+    def get_name(self) -> str:
+        return "我的界面插件"
+
+    def get_description(self) -> str:
+        return "一个插件示例，展示如何创建带UI的工具。"
+
+    def get_type(self) -> PluginType:
+        return PluginType.WIDGET
+
+    def create_widget(self) -> QWidget:
+        # 返回你的 QWidget 实例
+        return MyWidget(self)
 ```
 
-### 无界面插件 (Action Plugin)
+### 2. 无界面插件 (ActionPlugin)
 
+这种插件没有界面，点击后会直接执行一个操作。
+
+**示例: `plugins/my_action_plugin/tool.py`**
 ```python
-from plugin_system import PluginType
+from PySide6.QtWidgets import QMessageBox
+from plugin_system import ActionPlugin, PluginType
 
-TOOL_NAME = "插件名称"
-TOOL_DESCRIPTION = "插件描述"
-PLUGIN_TYPE = PluginType.ACTION
+class MyActionPlugin(ActionPlugin):
+    def __init__(self, plugin_dir: str):
+        super().__init__(plugin_dir)
 
-def execute():
-    # 执行操作的代码
-    pass
+    def get_name(self) -> str:
+        return "我的快捷操作"
+
+    def get_description(self) -> str:
+        return "一个插件示例，点击后会弹出一个消息框。"
+
+    def get_type(self) -> PluginType:
+        return PluginType.ACTION
+
+    def execute(self) -> None:
+        # 在这里执行你的代码
+        QMessageBox.information(None, "操作完成", "你点击了我的快捷操作！")
 ```
 
-### 搜索插件 (Search Plugin)
+### 3. 搜索插件 (SearchPlugin)
 
-#### 基础搜索插件
+这种插件可以为应用的主搜索框提供搜索结果。
 
+**示例: `plugins/my_search_plugin/tool.py`**
 ```python
-from plugin_system import PluginType, SearchResult
-
-TOOL_NAME = "插件名称"
-TOOL_DESCRIPTION = "插件描述"
-PLUGIN_TYPE = PluginType.SEARCH
-
-def search(query):
-    # 返回 SearchResult 列表
-    return [SearchResult("标题", "描述", "插件名称", "数据")]
-
-def execute(result_data):
-    # 执行搜索结果
-    pass
-```
-
-#### 使用高级搜索引擎的搜索插件
-
-```python
-from plugin_system import PluginType, SearchPlugin
-from search_engine import SearchableItem
+from typing import List
+from plugin_system import SearchPlugin, PluginType, SearchResult
 
 class MySearchPlugin(SearchPlugin):
-    def __init__(self, plugin_dir: str = ""):
+    def __init__(self, plugin_dir: str):
         super().__init__(plugin_dir)
-    
-    def get_name(self):
+
+    def get_name(self) -> str:
         return "我的搜索插件"
-    
-    def get_description(self):
-        return "使用高级搜索引擎的搜索插件"
-    
-    def get_type(self):
+
+    def get_description(self) -> str:
+        return "一个插件示例，为应用提供搜索结果。"
+
+    def get_type(self) -> PluginType:
         return PluginType.SEARCH
-    
-    def search(self, query):
-        # 准备可搜索的项目
-        items = [
-            SearchableItem(
-                title="项目标题",
-                description="项目描述",
-                data="项目数据",
-                keywords=["关键词1", "关键词2"]
-            )
-        ]
-        
-        # 使用搜索引擎进行高级搜索
-        return self.search_items(query, items, max_results=10)
-    
-    def execute(self, result_data):
-        # 执行搜索结果
-        pass
+
+    def search(self, query: str) -> List[SearchResult]:
+        # 根据查询返回结果列表
+        if "hello" in query.lower():
+            return [
+                SearchResult(
+                    title="你好世界",
+                    description="这是一个来自'我的搜索插件'的结果",
+                    plugin_name=self.get_name(),
+                    data={"action": "greet"} # 自定义数据
+                )
+            ]
+        return []
+
+    def execute_result(self, result: SearchResult) -> None:
+        # 当用户激活一个搜索结果时，执行此方法
+        if result.data.get("action") == "greet":
+            print("Hello World from search result!")
 ```
 
-**搜索引擎功能特性：**
-- 忽略大小写搜索
-- 英文单词首字母搜索（支持大写、空格、符号分词）
-- 中文拼音搜索（完整拼音匹配）
-- 中文拼音首字母搜索
-- 模糊匹配和相关度评分
+### 4. Web 插件 (WebPlugin)
 
-### Web插件 (Web Plugin)
+Web 插件通过一个 `manifest.json` 文件来定义，它允许你将任何静态 Web 应用打包成一个插件。
 
-在 `plugins/your_plugin_name/manifest.json` 中定义：
-
+**示例: `plugins/my_web_plugin/manifest.json`**
 ```json
 {
-    "name": "插件名称",
-    "description": "插件描述",
+    "name": "我的Web插件",
+    "description": "一个Web插件示例。",
     "version": "1.0.0",
     "entry": "index.html",
-    "author": "作者",
-    "homepage": "主页URL",
-    "type": "web",
-    "permissions": [],
-    "tags": ["标签"]
+    "author": "你的名字"
 }
 ```
+你需要将你的 Web 文件（`index.html` 等）和 `manifest.json` 一起放在 `plugins/my_web_plugin/` 目录下。
 
 ## 项目结构
 
@@ -178,22 +202,20 @@ python-toolbox/
 ├── main.py                    # 主程序入口
 ├── plugin_system.py           # 插件系统核心
 ├── search_engine.py           # 高级搜索引擎
-├── pyproject.toml            # 项目配置文件
-├── requirements.txt          # 依赖列表
-├── README.md                # 项目说明文档
-└── plugins/                 # 插件目录
-    ├── base_converter/      # 界面插件：进制转换器
-    │   └── tool.py
-    ├── color_picker/        # 界面插件：颜色选择器
-    │   └── tool.py
-    ├── quick_shutdown/      # 无界面插件：快捷关机
-    │   └── tool.py
-    ├── start_menu_search/   # 搜索插件：开始菜单搜索（使用高级搜索引擎）
-    │   └── tool.py
-    └── CyberChef/          # Web插件：CyberChef工具
-        ├── manifest.json
-        ├── index.html
-        └── ...
+├── pyproject.toml             # 项目配置文件
+├── README.md                  # 项目说明文档
+├── data/                      # 插件数据存储目录
+│   └── plugins/
+│       └── folder_organizer/
+│           └── config.json
+└── plugins/                   # 插件目录
+    ├── base_converter/
+    ├── color_picker/
+    ├── folder_organizer/
+    ├── quick_shutdown/
+    ├── start_menu_search/
+    ├── CyberChef/
+    └── emoji/
 ```
 
 ## 安装和运行
@@ -201,11 +223,11 @@ python-toolbox/
 ### 环境要求
 
 - Python 3.13 或更高版本
-- uv 包管理器（推荐）
+- `uv` 包管理器（推荐）
 
-### 安装 uv
+### 安装 `uv`
 
-如果还没有安装 uv，请先安装：
+如果尚未安装 `uv`，请根据你的操作系统执行以下命令：
 
 **Windows (PowerShell):**
 ```powershell
@@ -219,90 +241,24 @@ curl -LsSf https://astral.sh/uv/install.sh | sh
 
 ### 安装依赖
 
-使用 uv 安装项目依赖（推荐）：
+使用 `uv` 在项目中创建虚拟环境并安装依赖：
 
 ```bash
 uv sync
 ```
 
-或者使用传统的 pip 方式：
-
-```bash
-pip install PySide6
-```
-
 ### 运行应用
 
-使用 uv 运行（推荐）：
+使用 `uv` 运行应用：
 
 ```bash
 uv run python main.py
 ```
 
-或者激活虚拟环境后运行：
+## 贡献
 
-```bash
-# 激活虚拟环境
-.venv\Scripts\activate  # Windows
-# 或
-source .venv/bin/activate  # macOS/Linux
-
-# 运行应用
-python main.py
-```
-
-## 开发插件
-
-### 插件结构
-
-每个插件都是 `plugins` 目录下的一个子目录，包含一个 `tool.py` 文件。插件文件需要定义以下内容：
-
-```python
-# plugins/your_tool/tool.py
-
-from PySide6.QtWidgets import QWidget
-
-# 工具名称（必需）
-TOOL_NAME = "你的工具名称"
-
-# 工具描述（必需）
-TOOL_DESCRIPTION = "工具功能描述"
-
-# 工具界面类（必需）
-class ToolWidget(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-        # 在这里实现你的工具界面
-        pass
-```
-
-### 插件开发指南
-
-1. 在 `plugins` 目录下创建新的子目录
-2. 在子目录中创建 `tool.py` 文件
-3. 定义 `TOOL_NAME`、`TOOL_DESCRIPTION` 和 `ToolWidget` 类
-4. `ToolWidget` 类继承自 `QWidget`，实现具体的工具功能
-5. 重启应用程序，新插件将自动加载
-
-## 特性
-
-- **动态插件加载**：无需修改主程序代码即可添加新工具
-- **标签页管理**：支持打开多个工具实例，可以关闭除首页外的任意标签页
-- **搜索过滤**：在工具列表中快速搜索和过滤工具
-- **错误处理**：插件加载失败时不会影响其他插件的正常运行
+欢迎通过提交 Issue 和 Pull Request 来改进这个项目。
 
 ## 许可证
 
-本项目采用开源许可证，具体许可证信息请查看项目根目录下的 LICENSE 文件。
-
-## 贡献
-
-欢迎提交 Issue 和 Pull Request 来改进这个项目。在贡献代码之前，请确保：
-
-1. 代码符合项目的编码规范
-2. 新功能包含适当的测试
-3. 更新相关文档
-
-## 联系方式
-
-如有问题或建议，请通过 GitHub Issues 联系我们。
+本项目采用开源许可证。

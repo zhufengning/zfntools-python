@@ -1,0 +1,79 @@
+{
+    "图片": [
+        "jpg",
+        "png",
+        "gif",
+        "bmp",
+        "jpeg",
+        "svg",
+        "webp"
+    ],
+    "文档": [
+        "doc",
+        "docx",
+        "pdf",
+        "txt",
+        "xls",
+        "xlsx",
+        "ppt",
+        "pptx",
+        "html",
+        "md",
+        "tex",
+        "bib",
+        "typ"
+    ],
+    "视频": [
+        "mp4",
+        "avi",
+        "mkv",
+        "mov",
+        "wmv"
+    ],
+    "音频": [
+        "mp3",
+        "wav",
+        "flac",
+        "aac",
+        "m4a"
+    ],
+    "压缩包": [
+        "zip",
+        "rar",
+        "7z",
+        "tar",
+        "gz",
+        "xz"
+    ],
+    "代码": [
+        "py",
+        "js",
+        "css",
+        "java",
+        "c",
+        "cpp",
+        "go",
+        "json",
+        "xml",
+        "patch"
+    ],
+    "程序": [
+        "exe",
+        "dll",
+        "jar",
+        "apk",
+        "rpm",
+        "msi",
+        "msix",
+        "appx"
+    ],
+    "证书": [
+        "cer",
+        "pem",
+        "p12"
+    ],
+    "种子": [
+        "torrent"
+    ],
+    "其他": []
+}

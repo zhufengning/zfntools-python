@@ -24,6 +24,12 @@ class BasePlugin(ABC):
         self.description = ""
         self.plugin_type = PluginType.WIDGET
     
+    def get_data_dir(self) -> str:
+        """获取插件的数据存储目录"""
+        project_root = os.path.dirname(os.path.dirname(self.plugin_dir))
+        plugin_name = os.path.basename(self.plugin_dir)
+        return os.path.join(project_root, 'data', 'plugins', plugin_name)
+
     @abstractmethod
     def get_name(self) -> str:
         """获取插件名称"""
@@ -200,51 +206,55 @@ class PluginLoader:
     
     @staticmethod
     def _create_widget_plugin(plugin_dir: str, module) -> Optional[WidgetPlugin]:
-        """创建界面插件包装器"""
-        class WidgetPluginWrapper(WidgetPlugin):
-            def __init__(self):
-                super().__init__(plugin_dir)
-                self.name = getattr(module, 'TOOL_NAME', '未命名工具')
-                self.description = getattr(module, 'TOOL_DESCRIPTION', '')
-                self.widget_class = getattr(module, 'ToolWidget')
-            
-            def get_name(self) -> str:
-                return self.name
-            
-            def get_description(self) -> str:
-                return self.description
-            
-            def get_type(self) -> PluginType:
-                return PluginType.WIDGET
-            
-            def create_widget(self) -> QWidget:
-                return self.widget_class()
+        """创建界面插件实例"""
+        # 优先检查是否有基于类的插件
+        for attr_name in dir(module):
+            attr = getattr(module, attr_name)
+            if isinstance(attr, type) and issubclass(attr, WidgetPlugin) and attr != WidgetPlugin:
+                return attr(plugin_dir)
         
-        return WidgetPluginWrapper()
-    
+        # 兼容旧的函数式插件
+        if hasattr(module, 'ToolWidget'):
+            class WidgetPluginWrapper(WidgetPlugin):
+                def __init__(self):
+                    super().__init__(plugin_dir)
+                    self.name = getattr(module, 'TOOL_NAME', '未命名工具')
+                    self.description = getattr(module, 'TOOL_DESCRIPTION', '')
+                    self.widget_class = getattr(module, 'ToolWidget')
+                
+                def get_name(self) -> str: return self.name
+                def get_description(self) -> str: return self.description
+                def get_type(self) -> PluginType: return PluginType.WIDGET
+                def create_widget(self) -> QWidget: return self.widget_class()
+            return WidgetPluginWrapper()
+        
+        return None
+
     @staticmethod
     def _create_action_plugin(plugin_dir: str, module) -> Optional[ActionPlugin]:
-        """创建无界面插件包装器"""
-        class ActionPluginWrapper(ActionPlugin):
-            def __init__(self):
-                super().__init__(plugin_dir)
-                self.name = getattr(module, 'TOOL_NAME', '未命名工具')
-                self.description = getattr(module, 'TOOL_DESCRIPTION', '')
-                self.execute_func = getattr(module, 'execute')
-            
-            def get_name(self) -> str:
-                return self.name
-            
-            def get_description(self) -> str:
-                return self.description
-            
-            def get_type(self) -> PluginType:
-                return PluginType.ACTION
-            
-            def execute(self) -> None:
-                self.execute_func()
+        """创建无界面插件实例"""
+        # 优先检查是否有基于类的插件
+        for attr_name in dir(module):
+            attr = getattr(module, attr_name)
+            if isinstance(attr, type) and issubclass(attr, ActionPlugin) and attr != ActionPlugin:
+                return attr(plugin_dir)
+
+        # 兼容旧的函数式插件
+        if hasattr(module, 'execute'):
+            class ActionPluginWrapper(ActionPlugin):
+                def __init__(self):
+                    super().__init__(plugin_dir)
+                    self.name = getattr(module, 'TOOL_NAME', '未命名工具')
+                    self.description = getattr(module, 'TOOL_DESCRIPTION', '')
+                    self.execute_func = getattr(module, 'execute')
+                
+                def get_name(self) -> str: return self.name
+                def get_description(self) -> str: return self.description
+                def get_type(self) -> PluginType: return PluginType.ACTION
+                def execute(self) -> None: self.execute_func()
+            return ActionPluginWrapper()
         
-        return ActionPluginWrapper()
+        return None
     
     @staticmethod
     def _create_search_plugin(plugin_dir: str, module) -> Optional[SearchPlugin]:

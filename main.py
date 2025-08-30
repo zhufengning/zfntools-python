@@ -1,18 +1,102 @@
+import locale
+
+print("locale: ", locale.getlocale())
+print("default locale: ",  locale.getdefaultlocale())
+print("preferred encoding: ", locale.getpreferredencoding())
 # main.py
 import sys
 import os
+import json
 import importlib.util
 from PySide6.QtWidgets import (
     QApplication, QMainWindow, QWidget, QVBoxLayout, QLineEdit,
     QListWidget, QListWidgetItem, QTabWidget, QLabel, QHBoxLayout,
-    QFrame, QTabBar, QMessageBox
+    QFrame, QTabBar, QMessageBox, QSystemTrayIcon, QMenu
 )
-from PySide6.QtGui import QIcon, Qt, QKeyEvent
-from PySide6.QtCore import QSize, QUrl, QThread, Signal, QObject, QTimer
+from PySide6.QtGui import QIcon, Qt, QKeyEvent, QAction
+from PySide6.QtCore import QSize, QUrl, QThread, Signal, QObject, QTimer, QSharedMemory
+from PySide6.QtNetwork import QLocalServer, QLocalSocket
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from plugin_system import PluginLoader, PluginType, BasePlugin, WidgetPlugin, ActionPlugin, SearchPlugin, WebPlugin, SearchResult
 from search_engine import SearchableItem, get_search_engine
 from typing import List
+
+# Hotkey support for Windows
+if sys.platform == "win32":
+    from global_hotkeys import register_hotkeys, start_checking_hotkeys, stop_checking_hotkeys
+
+class HotkeyListener(QObject):
+    """A QObject to run the hotkey listener in a separate thread."""
+    show_window_signal = Signal()
+
+    def __init__(self, hotkey_config):
+        super().__init__()
+        self.hotkey_config = hotkey_config
+        self.is_running = True
+
+    def run(self):
+        """Register and start listening for hotkeys."""
+        if not self.is_running:
+            return
+
+        def on_show_window():
+            if self.is_running:
+                self.show_window_signal.emit()
+
+        bindings = [
+            [self.hotkey_config.get('show_window', 'alt+space'), None, on_show_window, False],
+        ]
+        
+        try:
+            register_hotkeys(bindings)
+            print(f"Registered hotkey: {bindings[0][0]}")
+            start_checking_hotkeys() # This is a blocking call
+        except Exception as e:
+            print(f"Error in hotkey listener thread: {e}")
+
+    def stop(self):
+        """Stop the hotkey listener."""
+        self.is_running = False
+        stop_checking_hotkeys()
+
+class SettingsManager:
+    """管理应用的设置"""
+    def __init__(self, data_dir: str):
+        self.settings_path = os.path.join(data_dir, 'settings.json')
+        self.settings = self.load_settings()
+
+    def get_data_dir(self):
+        """获取数据目录"""
+        return os.path.dirname(self.settings_path)
+
+    def load_settings(self) -> dict:
+        """加载设置，如果文件不存在则创建默认设置"""
+        if not os.path.exists(self.settings_path):
+            # 确保目录存在
+            os.makedirs(os.path.dirname(self.settings_path), exist_ok=True)
+            # 创建默认设置
+            default_settings = {
+                'hotkey': {
+                    'show_window': 'alt+space'
+                }
+            }
+            self.save_settings(default_settings)
+            return default_settings
+        
+        try:
+            with open(self.settings_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, FileNotFoundError):
+            return {} # or return default settings
+
+    def save_settings(self, settings: dict):
+        """保存设置"""
+        with open(self.settings_path, 'w', encoding='utf-8') as f:
+            json.dump(settings, f, indent=4)
+
+    def get_setting(self, key: str, default=None):
+        """获取单个设置项"""
+        return self.settings.get(key, default)
 
 class SearchWorker(QObject):
     """搜索工作线程"""
@@ -63,6 +147,10 @@ class MainWindow(QMainWindow):
         self.setWindowTitle("Python 工具箱")
         self.setGeometry(100, 100, 900, 600)
 
+        # 初始化设置管理器
+        data_dir = os.path.join(os.path.dirname(__file__), 'data')
+        self.settings_manager = SettingsManager(data_dir)
+
         # 加载所有插件
         self.plugins = self.load_plugins()
         self.search_plugins = [p for p in self.plugins if isinstance(p, SearchPlugin)]
@@ -96,6 +184,116 @@ class MainWindow(QMainWindow):
 
         # 启动时聚焦到搜索框
         self.search_bar.setFocus()
+
+        # 创建系统托盘图标
+        self.create_tray_icon()
+
+        # 初始化本地服务用于单例检测
+        self.init_local_server()
+
+        # 注册全局热键
+        if sys.platform == "win32":
+            self.setup_hotkey_listener()
+
+    def setup_hotkey_listener(self):
+        """Sets up the hotkey listener in a separate thread."""
+        hotkey_config = self.settings_manager.get_setting('hotkey', {})
+        
+        self.hotkey_thread = QThread(self)
+        self.hotkey_listener = HotkeyListener(hotkey_config)
+        self.hotkey_listener.moveToThread(self.hotkey_thread)
+
+        self.hotkey_listener.show_window_signal.connect(self.show_and_raise)
+        self.hotkey_thread.started.connect(self.hotkey_listener.run)
+        
+        self.hotkey_thread.start()
+
+    def show_and_raise(self):
+        """Shows the window and brings it to the front."""
+        self.showNormal()
+        self.raise_()
+        self.activateWindow()
+
+    def init_local_server(self):
+        """初始化本地服务，用于单例应用"""
+        self.local_server = QLocalServer(self)
+        unique_key = "python-toolbox-unique-key"
+        
+        # 清理可能存在的旧服务
+        QLocalServer.removeServer(unique_key)
+        
+        if self.local_server.listen(unique_key):
+            self.local_server.newConnection.connect(self.show_existing_window)
+        else:
+            print(f"无法启动本地服务: {self.local_server.errorString()}")
+
+    def show_existing_window(self):
+        """显示已存在的窗口"""
+        self.showNormal()
+        self.activateWindow()
+        self.raise_()
+        # 处理传入的连接
+        socket = self.local_server.nextPendingConnection()
+        if socket:
+            socket.readyRead.connect(socket.deleteLater)
+
+    def create_tray_icon(self):
+        """创建系统托盘图标"""
+        self.tray_icon = QSystemTrayIcon(self)
+        # 使用 emoji 插件的 appicon.png 作为托盘图标
+        icon_path = os.path.join(os.path.dirname(__file__), 'plugins', 'emoji', 'appicon.png')
+        if os.path.exists(icon_path):
+            self.tray_icon.setIcon(QIcon(icon_path))
+        else:
+            # 如果找不到图标，使用默认图标或提供一个备用方案
+            # 这里我们暂时只在控制台打印警告
+            print(f"Warning: Tray icon not found at {icon_path}")
+
+        self.tray_icon.setToolTip("Python 工具箱")
+
+        # 创建托盘菜单
+        tray_menu = QMenu()
+        
+        # 显示/隐藏动作
+        toggle_action = QAction("显示/隐藏", self)
+        toggle_action.triggered.connect(self.toggle_window_visibility)
+        tray_menu.addAction(toggle_action)
+
+        # 退出动作
+        exit_action = QAction("退出", self)
+        exit_action.triggered.connect(self.exit_application)
+        tray_menu.addAction(exit_action)
+
+        self.tray_icon.setContextMenu(tray_menu)
+        self.tray_icon.show()
+
+        # 点击托盘图标时切换窗口可见性
+        self.tray_icon.activated.connect(self.on_tray_icon_activated)
+
+    def toggle_window_visibility(self):
+        """切换主窗口的可见性"""
+        if self.isVisible():
+            self.hide()
+        else:
+            self.show()
+            self.activateWindow()
+            self.raise_()
+
+    def on_tray_icon_activated(self, reason):
+        """处理托盘图标点击事件"""
+        # 如果是单击或双击，则切换窗口可见性
+        if reason == QSystemTrayIcon.ActivationReason.Trigger or reason == QSystemTrayIcon.ActivationReason.DoubleClick:
+            self.toggle_window_visibility()
+            
+    def exit_application(self):
+        """退出应用程序"""
+        if sys.platform == "win32" and hasattr(self, 'hotkey_thread'):
+            if self.hotkey_thread.isRunning():
+                self.hotkey_listener.stop()
+                self.hotkey_thread.quit()
+                self.hotkey_thread.wait()
+        self.stop_all_searches()
+        QApplication.quit()
 
     def load_plugins(self):
         """加载所有插件"""
@@ -185,12 +383,19 @@ class MainWindow(QMainWindow):
             if current_item:
                 self.handle_item_activation(current_item)
         elif event.key() == Qt.Key_Escape:
-            # ESC键：将焦点返回到搜索栏
-            self.search_bar.setFocus()
+            # ESC键：隐藏窗口
+            self.hide()
         else:
             # 其他键：调用原始的keyPressEvent（包括上下键导航）
             QListWidget.keyPressEvent(self.tool_list_widget, event)
     
+    def keyPressEvent(self, event: QKeyEvent):
+        """处理主窗口的按键事件"""
+        if event.key() == Qt.Key_Escape:
+            self.hide()
+        else:
+            super().keyPressEvent(event)
+
     def _add_plugin_to_list(self, plugin: BasePlugin, is_search_result: bool = False, search_result: SearchResult = None):
         """将插件添加到列表中"""
         item = QListWidgetItem()
@@ -441,14 +646,48 @@ class MainWindow(QMainWindow):
         self.tab_widget.removeTab(index)
     
     def closeEvent(self, event):
-        """窗口关闭事件"""
-        # 停止所有搜索线程
-        self.stop_all_searches()
-        super().closeEvent(event)
+        """重写关闭事件，实现隐藏到托盘"""
+        # 隐藏窗口而不是退出
+        event.ignore()
+        self.hide()
+        # 不启用通知
+        # self.tray_icon.showMessage(
+        #     "程序已最小化到托盘",
+        #     "点击托盘图标可以恢复窗口",
+        #     QSystemTrayIcon.MessageIcon.Information,
+        #     2000
+        # )
 
 
 if __name__ == "__main__":
+    unique_key = "python-toolbox-unique-key"
+    shared_mem = QSharedMemory(unique_key)
+
+    # 尝试创建共享内存段
+    if not shared_mem.create(1):
+        # 如果创建失败，检查是否是因为已存在
+        if shared_mem.error() == QSharedMemory.SharedMemoryError.AlreadyExists:
+            # 确实是已存在，说明有实例在运行
+            # 连接到本地服务并发送消息以显示窗口
+            socket = QLocalSocket()
+            socket.connectToServer(unique_key)
+            if socket.waitForConnected(500):
+                socket.disconnectFromServer()
+            # 退出当前这个重复的实例
+            sys.exit(0)
+        else:
+            # 其他错误，无法创建共享内存
+            QMessageBox.critical(None, "错误", f"无法创建共享内存段: {shared_mem.errorString()}")
+            sys.exit(1)
+
     app = QApplication(sys.argv)
+    # 设置在最后一个窗口关闭时不要退出程序，因为我们有托盘图标
+    app.setQuitOnLastWindowClosed(False)
+    
     window = MainWindow()
     window.show()
+
+    # 确保在程序退出时分离共享内存
+    app.aboutToQuit.connect(shared_mem.detach)
+    
     sys.exit(app.exec())

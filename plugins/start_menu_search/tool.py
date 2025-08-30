@@ -5,6 +5,7 @@ import subprocess
 import json
 import time
 import threading
+import locale
 from plugin_system import PluginType, SearchResult, SearchPlugin
 from search_engine import SearchableItem
 
@@ -46,7 +47,49 @@ class StartMenuSearchPlugin(SearchPlugin):
             ps_command = 'Get-StartApps | Select-Object Name, AppID | ConvertTo-Json -Compress'
             powershell_cmd = ['powershell', '-Command', ps_command]
             
-            result = subprocess.run(powershell_cmd, capture_output=True, text=True, encoding='utf-8')
+            # 以二进制模式捕获输出，然后尝试不同的编码
+            result = subprocess.run(powershell_cmd, capture_output=True, text=False)
+            
+            # 尝试解码输出
+            stdout_text = ""
+            stderr_text = ""
+            
+            if result.stdout:
+                try:
+                    # 首先尝试 UTF-8
+                    stdout_text = result.stdout.decode('utf-8')
+                except UnicodeDecodeError:
+                    try:
+                        # 如果 UTF-8 失败，尝试系统默认编码
+                        stdout_text = result.stdout.decode(locale.getpreferredencoding())
+                    except UnicodeDecodeError:
+                        try:
+                            # 最后尝试 GBK（Windows 中文系统常用）
+                            stdout_text = result.stdout.decode('gbk')
+                        except UnicodeDecodeError:
+                            # 如果都失败，使用 errors='ignore' 忽略错误字符
+                            stdout_text = result.stdout.decode('utf-8', errors='ignore')
+            
+            if result.stderr:
+                try:
+                    stderr_text = result.stderr.decode('utf-8')
+                except UnicodeDecodeError:
+                    try:
+                        stderr_text = result.stderr.decode(locale.getpreferredencoding())
+                    except UnicodeDecodeError:
+                        try:
+                            stderr_text = result.stderr.decode('gbk')
+                        except UnicodeDecodeError:
+                            stderr_text = result.stderr.decode('utf-8', errors='ignore')
+            
+            # 创建一个模拟的 result 对象，包含解码后的文本
+            class DecodedResult:
+                def __init__(self, returncode, stdout, stderr):
+                    self.returncode = returncode
+                    self.stdout = stdout
+                    self.stderr = stderr
+            
+            result = DecodedResult(result.returncode, stdout_text, stderr_text)
 
             if result.stderr:
                 print(f"PowerShell命令错误输出: {result.stderr}")
@@ -101,7 +144,7 @@ class StartMenuSearchPlugin(SearchPlugin):
             if result_data.get('type') == 'app':
                 app_id = result_data['app_id']
                 # Using Start-Process with Shell:AppsFolder to launch the app by its AppID
-                command = f'Start-Process "shell:AppsFolder\{app_id}"'
+                command = f'Start-Process "shell:AppsFolder\\{app_id}"'
                 subprocess.run(['powershell', '-Command', command], check=True)
         except Exception as e:
             print(f"启动应用程序失败: {e}")
