@@ -102,9 +102,10 @@ class SearchEngine:
             if pinyin_score > 0:
                 return pinyin_score
         
-        # 5. 模糊匹配（部分字符匹配）
-        fuzzy_score = self._fuzzy_match(query_lower, text_lower)
-        return fuzzy_score
+        # # 5. 模糊匹配（部分字符匹配）（暂不使用）
+        # fuzzy_score = self._fuzzy_match(query_lower, text_lower)
+        # return fuzzy_score
+        return 0
     
     def _match_acronym(self, query: str, text: str) -> float:
         """英文首字母匹配"""

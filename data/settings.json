@@ -1,5 +1,5 @@
 {
-    "hotkey": {
-        "show_window": "alt+space"
+    "hotkeys": {
+        "show_window": "alt+shift+x"
     }
 }
