@@ -206,7 +206,7 @@ class MainWindow(QMainWindow):
         
         # Search bar
         self.search_bar = QLineEdit()
-        self.search_bar.setPlaceholderText("搜索工具和应用程序...")
+        self.search_bar.setPlaceholderText("搜索插件或使用搜索插件")
         self.search_bar.textChanged.connect(self.on_search_text_changed)
         self.search_bar.keyPressEvent = self.search_bar_key_press_event
         layout.addWidget(self.search_bar)
