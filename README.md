@@ -34,6 +34,8 @@ Python 工具箱是一个桌面应用程序，它提供了一个统一的、美�
 
 为了确保打包后的应用程序在执行外部命令时不会弹出 PowerShell 窗口，项目中的所有 `subprocess.run` 调用都已配置了 `startupinfo` 参数来隐藏控制台窗口。这个优化特别针对 Windows 系统和 PyInstaller 打包环境。
 
+如使用PyInstaller，请使用对应的start_pyinstaller.ahk
+
 ## 内置插件
 
 ### 界面插件 (Widget Plugins)
@@ -265,12 +267,13 @@ uv run python main.py
 
 本应用通过在启动时创建一个 `.port` 文件来确保只有一个实例在运行。后续的启动尝试会读取该文件中的端口号，并发送一个UDP消息来唤醒（显示并置于顶层）现有的主窗口，而不是创建一个新实例。
 
+
 ### Windows
 
 在 Windows 上，我们推荐使用 [AutoHotkey v1](https://www.autohotkey.com/) 来实现全局热键唤醒功能。
 
 1.  **安装 AutoHotkey v1**：从其官网下载并安装。
-2.  **运行脚本**：直接双击项目根目录下的 `start.ahk` 脚本。
+2.  **运行脚本**：直接双击项目根目录下的 `start.ahk` 脚本。如使用PyInstaller打包，请使用对应的start_pyinstaller.ahk
 
 该脚本会执行以下操作：
 - 绑定 `Alt+Space` 为全局热键。
