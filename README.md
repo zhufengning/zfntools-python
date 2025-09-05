@@ -257,6 +257,72 @@ uv sync
 
 ```bash
 uv run python main.py
+
+## 唤醒与单例运行
+
+本应用通过在启动时创建一个 `.port` 文件来确保只有一个实例在运行。后续的启动尝试会读取该文件中的端口号，并发送一个UDP消息来唤醒（显示并置于顶层）现有的主窗口，而不是创建一个新实例。
+
+### Windows
+
+在 Windows 上，我们推荐使用 [AutoHotkey v1](https://www.autohotkey.com/) 来实现全局热键唤醒功能。
+
+1.  **安装 AutoHotkey v1**：从其官网下载并安装。
+2.  **运行脚本**：直接双击项目根目录下的 `start.ahk` 脚本。
+
+该脚本会执行以下操作：
+- 绑定 `Alt+Space` 为全局热键。
+- 按下热键时，它会检查 `.port` 文件是否存在：
+  - 如果存在，则读取端口并发送UDP消息以唤醒主窗口。
+  - 如果不存在，则会执行 `uv run main.py` 来启动主程序。
+
+脚本依赖于同目录下的 `Socket.ahk` 库（已包含在项目中）。
+
+### Linux
+
+在 Linux 上，你可以使用 `xbindkeys` 和 `netcat` (nc) 来实现类似的功能。
+
+1.  **安装工具**:
+    ```bash
+    sudo apt-get update
+    sudo apt-get install xbindkeys netcat
+    ```
+
+2.  **创建配置文件**: 创建或编辑 `~/.xbindkeysrc` 文件，添加以下内容：
+    ```
+    # 唤醒 Python 工具箱
+    "sh -c 'if [ -f /path/to/your/project/.port ]; then echo -n \"wake\" | nc -u -w0 127.0.0.1 $(cat /path/to/your/project/.port); else /path/to/your/uv/bin/uv run python /path/to/your/project/main.py; fi'"
+      alt + space
+    ```
+    **注意**: 请将 `/path/to/your/project` 替换为本项目的绝对路径，并将 `/path/to/your/uv/bin/uv` 替换为 `uv` 的实际路径。
+
+3.  **运行 xbindkeys**: 在终端中运行 `xbindkeys` 使配置生效。
+
+### macOS
+
+在 macOS 上，你可以使用 [Hammerspoon](https://www.hammerspoon.org/) 或系统自带的“快捷指令”来绑定热键并执行脚本。
+
+以下是使用 Hammerspoon 的示例：
+
+1.  **安装 Hammerspoon**：从官网下载并安装。
+2.  **编辑配置文件**：编辑 `~/.hammerspoon/init.lua`，添加以下代码：
+    ```lua
+    hs.hotkey.bind({"alt"}, "space", function()
+        local port_file = "/path/to/your/project/.port"
+        local f = io.open(port_file, "r")
+        if f then
+            local port = f:read("*a")
+            f:close()
+            port = port:match("^%s*(.-)%s*$") -- Trim whitespace
+            os.execute("echo -n 'wake' | nc -u -w0 127.0.0.1 " .. port)
+        else
+            os.execute("/path/to/your/uv/bin/uv run python /path/to/your/project/main.py &")
+        end
+    end)
+    ```
+    **注意**: 请将 `/path/to/your/project` 替换为本项目的绝对路径，并将 `/path/to/your/uv/bin/uv` 替换为 `uv` 的实际路径。
+
+3.  **重载配置**：在 Hammerspoon 的控制台中点击 “Reload Config”。
+
 ```
 
 ## 贡献
