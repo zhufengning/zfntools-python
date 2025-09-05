@@ -201,3 +201,4 @@ python_toolbox.egg-info/
 
 # UV lock file (can be included or excluded based on preference)
 # uv.lock
+.port
