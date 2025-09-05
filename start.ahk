@@ -11,7 +11,7 @@ SetWorkingDir %A_ScriptDir%
     if !FileExist(portFile)
     {
         ; If the .port file doesn't exist, try to run the main application
-        Run, uv run main.py, %A_ScriptDir%
+        Run, uv run main.py, %A_ScriptDir%, Hide
         return
     }
 
