@@ -80,7 +80,19 @@ Python 工具箱是一个桌面应用程序，它提供了一个统一的、美�
 - **Python 3.13+**：项目的主要编程语言。
 - **PySide6**：用于构建现代化用户界面的 GUI 框架。
 - **pypinyin**：为搜索引擎提供中文拼音搜索能力。
-- **模块化架构**：基于类的插件系统，易于扩展和维护。
+- **模块化架构**：重构后的代码采用职责分离原则，每个模块负责单一功能。
+
+## 架构设计
+
+项目采用模块化设计，将原本的单一主窗口文件（473行）重构为多个职责清晰的模块：
+
+- **`main_window.py`** (176行) - 主窗口，负责UI组装和事件分发
+- **`tray_manager.py`** - 系统托盘管理
+- **`udp_listener.py`** - UDP监听和窗口唤醒
+- **`search_manager.py`** - 搜索功能管理（本地搜索、插件搜索、结果处理）
+- **`plugin_manager.py`** - 插件加载和执行管理
+
+这种设计使得代码更易维护、测试和扩展。
 
 ## 插件开发指南
 
@@ -209,23 +221,33 @@ Web 插件通过一个 `manifest.json` 文件来定义，它允许你将任何�
 
 ```
 python-toolbox/
-├── main.py                    # 主程序入口
-├── plugin_system.py           # 插件系统核心
-├── search_engine.py           # 高级搜索引擎
+├── src/                       # 源代码目录
+│   ├── main.py                # 主程序入口
+│   ├── main_window.py         # 主窗口（重构后简化）
+│   ├── plugin_system.py       # 插件系统核心
+│   ├── search_engine.py       # 高级搜索引擎
+│   ├── search_workers.py      # 异步搜索工作器
+│   ├── settings_manager.py    # 设置管理器
+│   ├── tray_manager.py        # 系统托盘管理器
+│   ├── udp_listener.py        # UDP监听器
+│   ├── plugin_manager.py      # 插件管理器
+│   ├── search_manager.py      # 搜索管理器
+│   ├── data/                  # 插件数据存储目录
+│   │   └── plugins/
+│   │       └── folder_organizer/
+│   │           └── config.json
+│   └── plugins/               # 插件目录
+│       ├── base_converter/
+│       ├── color_picker/
+│       ├── folder_organizer/
+│       ├── quick_shutdown/
+│       ├── start_menu_search/
+│       ├── CyberChef/
+│       └── emoji/
 ├── pyproject.toml             # 项目配置文件
-├── README.md                  # 项目说明文档
-├── data/                      # 插件数据存储目录
-│   └── plugins/
-│       └── folder_organizer/
-│           └── config.json
-└── plugins/                   # 插件目录
-    ├── base_converter/
-    ├── color_picker/
-    ├── folder_organizer/
-    ├── quick_shutdown/
-    ├── start_menu_search/
-    ├── CyberChef/
-    └── emoji/
+├── main.spec                  # PyInstaller打包配置
+├── build.ps1                  # 构建脚本
+└── README.md                  # 项目说明文档
 ```
 
 ## 安装和运行
@@ -275,7 +297,7 @@ uv run python main.py
 在 Windows 上，我们推荐使用 [AutoHotkey v1](https://www.autohotkey.com/) 来实现全局热键唤醒功能。
 
 1.  **安装 AutoHotkey v1**：从其官网下载并安装。
-2.  **运行脚本**：直接双击项目根目录下的 `start.ahk` 脚本。如使用PyInstaller打包，请使用对应的start_pyinstaller.ahk
+2.  **运行脚本**：直接双击项目根目录下的 `start_toolbox.ahk` 脚本。如使用PyInstaller打包，请使用对应的`start_pyinstaller.ahk`
 
 该脚本会执行以下操作：
 - 绑定 `Alt+Space` 为全局热键。

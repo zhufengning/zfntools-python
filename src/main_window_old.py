@@ -1,30 +1,28 @@
 # main_window.py
-import sys
 import os
-import socket
 from PySide6.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QLineEdit,
-    QListWidget, QListWidgetItem, QTabWidget, QLabel, QHBoxLayout,
-    QFrame, QTabBar, QMessageBox, QSystemTrayIcon, QMenu
+    QListWidget, QTabWidget, QTabBar, QApplication
 )
-from PySide6.QtGui import QIcon, Qt, QKeyEvent, QAction
-from PySide6.QtCore import QSize, QUrl, QThread, Signal, QObject, QTimer
-from PySide6.QtNetwork import QUdpSocket, QHostAddress
-from PySide6.QtWebEngineWidgets import QWebEngineView
-from plugin_system import PluginLoader, PluginType, BasePlugin, WidgetPlugin, ActionPlugin, SearchPlugin, WebPlugin, SearchResult
-from search_engine import SearchableItem, get_search_engine
+from PySide6.QtGui import Qt, QKeyEvent
 from typing import List
 
 # 导入新的模块
 from settings_manager import SettingsManager
-from search_workers import SearchWorker, LocalSearchWorker
-
-PORT_FILE = ".port"
+from tray_manager import TrayManager
+from udp_listener import UdpListener
+from search_manager import SearchManager
+from plugin_manager import PluginManager
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("Python 工具箱")
+        self.settings_manager = SettingsManager()
+        self.tray_manager = TrayManager(self)
+        self.udp_listener = UdpListener(self)
+        self.search_manager = SearchManager(self)
+        self.plugin_manager = PluginManager(self)
         self.setGeometry(100, 100, 900, 600)
 
         # 初始化设置管理器

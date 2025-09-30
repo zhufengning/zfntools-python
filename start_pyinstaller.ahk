@@ -1,3 +1,4 @@
+
 #NoEnv
 #SingleInstance Force
 SendMode Input
@@ -11,7 +12,7 @@ SetWorkingDir %A_ScriptDir%
     if !FileExist(portFile)
     {
         ; If the .port file doesn't exist, try to run the main application
-        Run, ./main.exe, %A_ScriptDir%, Hide
+        Run, ./pytoolbox.exe, %A_ScriptDir%, Hide
         return
     }
 
