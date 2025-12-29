@@ -4,12 +4,7 @@ import re
 from typing import List, Tuple, Any
 from dataclasses import dataclass
 
-try:
-    from pypinyin import lazy_pinyin, Style
-    PYPINYIN_AVAILABLE = True
-except ImportError:
-    PYPINYIN_AVAILABLE = False
-    print("Warning: pypinyin not installed. Chinese pinyin search will be disabled.")
+from pypinyin import lazy_pinyin, Style
 
 @dataclass
 class SearchableItem:
@@ -96,16 +91,18 @@ class SearchEngine:
         if acronym_score > 0:
             return acronym_score
         
-        # 4. 中文拼音匹配
-        if PYPINYIN_AVAILABLE:
-            pinyin_score = self._match_pinyin(query, text)
-            if pinyin_score > 0:
-                return pinyin_score
+        # 4. 中文拼音匹配 (包含混合英文)
+      
+        pinyin_score = self._match_pinyin(query, text)
+        if pinyin_score > 0:
+            return pinyin_score
         
-        # # 5. 模糊匹配（部分字符匹配）（暂不使用）
-        # fuzzy_score = self._fuzzy_match(query_lower, text_lower)
-        # return fuzzy_score
-        return 0
+        # 5. 子序列匹配 (如: vscode -> Visual Studio Code)
+        subsequence_score = self._match_subsequence(query, text)
+        if subsequence_score > 0:
+            return subsequence_score
+            
+        return 0.0
     
     def _match_acronym(self, query: str, text: str) -> float:
         """英文首字母匹配"""
@@ -125,19 +122,18 @@ class SearchEngine:
         return 0.0
     
     def _match_pinyin(self, query: str, text: str) -> float:
-        """中文拼音匹配"""
-        if not PYPINYIN_AVAILABLE:
+        """中文拼音匹配（支持混合英文）"""
+        
+        # 不再只提取中文，而是处理整个文本
+        # pypinyin 会自动处理中文，保留英文
+        
+        # 获取拼音列表
+        pinyin_list = lazy_pinyin(text, style=Style.NORMAL)
+        if not pinyin_list:
             return 0.0
-        
-        # 提取中文字符
-        chinese_chars = re.findall(r'[\u4e00-\u9fff]+', text)
-        if not chinese_chars:
-            return 0.0
-        
-        chinese_text = ''.join(chinese_chars)
-        
+            
         # 完整拼音匹配
-        pinyin_full = ''.join(lazy_pinyin(chinese_text, style=Style.NORMAL))
+        pinyin_full = ''.join(pinyin_list).lower()
         query_lower = query.lower()
         
         if query_lower == pinyin_full:
@@ -145,13 +141,51 @@ class SearchEngine:
         elif query_lower in pinyin_full:
             return 0.4
         
-        # 拼音首字母匹配
-        pinyin_initials = ''.join(lazy_pinyin(chinese_text, style=Style.FIRST_LETTER))
+        # 拼音首字母匹配 (混合模式)
+        # 对于中文取首字母，对于英文单词(被pypinyin保留的部分)也取首字母
+        # lazy_pinyin('弹弹play') -> ['dan', 'dan', 'play'] -> ddp
+        initials = []
+        for part in pinyin_list:
+            part = part.strip()
+            if part:
+                initials.append(part[0].lower())
+        
+        pinyin_initials = ''.join(initials)
+        
         if query_lower == pinyin_initials:
             return 0.5
         elif query_lower in pinyin_initials:
             return 0.3
         
+        return 0.0
+
+    def _match_subsequence(self, query: str, text: str) -> float:
+        """子序列匹配 (Fuzzy Match)"""
+        # 检查 query 的字符是否按顺序出现在 text 中
+        if not query or not text:
+            return 0.0
+            
+        query_lower = query.lower()
+        text_lower = text.lower()
+        
+        # 如果 query 比 text 还长，不可能匹配
+        if len(query_lower) > len(text_lower):
+            return 0.0
+            
+        i, j = 0, 0
+        m, n = len(query_lower), len(text_lower)
+        
+        while i < m and j < n:
+            if query_lower[i] == text_lower[j]:
+                i += 1
+            j += 1
+            
+        if i == m:
+            # 匹配成功
+            # 可以根据匹配的"紧凑度"给予不同分数，这里简化处理给一个固定较低分数
+            # 因为这种匹配比较宽泛，分数不宜过高，以免干扰准确匹配
+            return 0.3
+            
         return 0.0
     
     def _fuzzy_match(self, query: str, text: str) -> float:

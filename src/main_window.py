@@ -5,6 +5,7 @@ from PySide6.QtWidgets import (
     QListWidget, QTabWidget, QTabBar, QApplication
 )
 from PySide6.QtGui import Qt, QKeyEvent
+from PySide6.QtCore import QTimer
 
 # 导入新的模块
 from settings_manager import SettingsManager
@@ -91,11 +92,8 @@ class MainWindow(QMainWindow):
         if self.isVisible() and self.isActiveWindow():
             self.hide()
         else:
-            # 确保窗口不是最小化状态
             if self.isMinimized():
                 self.showNormal()
-            
-            # 显示窗口
             self.show()
             
             # 置顶会导致窗口闪烁，所以不使用
@@ -107,12 +105,26 @@ class MainWindow(QMainWindow):
             # self.setWindowFlags(self.windowFlags() & ~Qt.WindowStaysOnTopHint)
             # self.show()
             
-            # 激活窗口
             self.raise_()
+            wh = self.windowHandle()
+            if wh is not None:
+                wh.requestActivate()
+            QApplication.setActiveWindow(self)
             self.activateWindow()
+            QTimer.singleShot(0, self._ensure_activated)
             
             if self.tab_widget.currentWidget() == self.home_tab:
-                self.search_bar.setFocus()
+                self.search_bar.setFocus(Qt.ActiveWindowFocusReason)
+
+    def _ensure_activated(self):
+        self.raise_()
+        wh = self.windowHandle()
+        if wh is not None:
+            wh.requestActivate()
+        QApplication.setActiveWindow(self)
+        self.activateWindow()
+        if self.tab_widget.currentWidget() == self.home_tab:
+            self.search_bar.setFocus(Qt.ActiveWindowFocusReason)
 
     def search_bar_key_press_event(self, event: QKeyEvent):
         """搜索栏键盘事件处理"""
