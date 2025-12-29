@@ -46,7 +46,8 @@ class MainWindow(QMainWindow):
         # 初始化搜索管理器
         self.search_manager = SearchManager(
             self.plugin_manager.get_plugins(), 
-            self.tool_list_widget
+            self.tool_list_widget,
+            data_dir
         )
         self.search_manager.set_search_callback(self.start_async_search)
         
@@ -186,8 +187,10 @@ class MainWindow(QMainWindow):
             return
         
         if data['type'] == 'plugin':
+            self.search_manager.record_usage(data)
             self.plugin_manager.open_plugin(data['plugin'])
         elif data['type'] == 'search_result':
+            self.search_manager.record_usage(data)
             self.plugin_manager.execute_search_result(data['result'], data['plugin'])
         
         # 清空搜索框并显示所有插件

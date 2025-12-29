@@ -5,7 +5,9 @@ from PySide6.QtGui import Qt
 from plugin_system import BasePlugin, SearchPlugin, SearchResult, PluginType
 from search_engine import SearchableItem, get_search_engine
 from search_workers import SearchWorker, LocalSearchWorker
-from typing import List, Callable
+from search_workers import SearchWorker, LocalSearchWorker
+from usage_stats import UsageStatsManager
+from typing import List, Callable, Optional
 
 
 class SearchManager(QObject):
@@ -15,13 +17,14 @@ class SearchManager(QObject):
     add_local_result = Signal(object)  # BasePlugin
     add_search_result = Signal(object, object)  # SearchPlugin, SearchResult
     
-    def __init__(self, plugins: List[BasePlugin], tool_list_widget: QListWidget):
+    def __init__(self, plugins: List[BasePlugin], tool_list_widget: QListWidget, data_dir: str):
         """
         初始化搜索管理器
         
         Args:
             plugins: 所有插件列表
             tool_list_widget: 显示结果的列表控件
+            data_dir: 数据存储目录
         """
         super().__init__()
         self.plugins = plugins
@@ -44,6 +47,45 @@ class SearchManager(QObject):
         
         # 初始化搜索引擎
         self._setup_search_engine()
+
+        # 初始化使用统计
+        self.usage_stats = UsageStatsManager(data_dir)
+        
+    def record_usage(self, item_data: dict):
+        """记录项目使用情况"""
+        try:
+            if item_data['type'] == 'plugin':
+                plugin = item_data['plugin']
+                self.usage_stats.record_usage(
+                    'plugin', 
+                    plugin.get_name(), 
+                    {}
+                )
+            elif item_data['type'] == 'search_result':
+                result = item_data['result']
+                # 序列化 SearchResult 数据
+                data = {
+                    'title': result.title,
+                    'description': result.description,
+                    'plugin_name': result.plugin_name,
+                    'data': result.data
+                }
+                # 使用 插件名:标题 作为唯一ID
+                item_id = f"{result.plugin_name}:{result.title}"
+                self.usage_stats.record_usage(
+                    'search_result', 
+                    item_id, 
+                    data
+                )
+        except Exception as e:
+            print(f"Error recording usage: {e}")
+
+    def _find_plugin_by_name(self, name: str) -> Optional[BasePlugin]:
+        """根据名称查找插件"""
+        for plugin in self.plugins:
+            if plugin.get_name() == name:
+                return plugin
+        return None
     
     def _setup_search_engine(self):
         """设置搜索引擎并添加本地插件"""
@@ -176,17 +218,42 @@ class SearchManager(QObject):
                           search_result: SearchResult = None):
         """将插件添加到列表中"""
         try:
-            print(f"[SearchManager] 开始添加到列表: {plugin.get_name() if plugin else 'None'}")
+            # Calculate Priority / Rank
+            # Rank 0-2 for Top 3 items, 999 for others
+            rank = 999
+            
+            # Generate ID to check against stats
+            if is_search_result and search_result:
+                item_id = f"{search_result.plugin_name}:{search_result.title}"
+                # Check if this ID is in top items
+                # We need to fetch top items dynamically or cache them? 
+                # Caching them at start of search is better, but let's just fetch for now or cache in self.top_items_ids
+                # For efficiency, we should probably update self.top_items_ids in start_search
+                pass 
+            elif plugin:
+                item_id = plugin.get_name()
+                
+            # Get current top items (we should cache this mapping properly)
+            # This is a bit expensive to do for every item, but with <100 items it's fine
+            top_items = self.usage_stats.get_top_items(3)
+            for i, stats in enumerate(top_items):
+                if stats['id'] == item_id:
+                    # check type matches
+                    expected_type = 'search_result' if is_search_result else 'plugin'
+                    if stats['type'] == expected_type:
+                        rank = i
+                        break
+            
+            print(f"[SearchManager] 添加到列表: {item_id}, rank={rank}")
+            
             item = QListWidgetItem()
-            print(f"[SearchManager] 创建QListWidgetItem成功")
             widget = QWidget()
-            print(f"[SearchManager] 创建QWidget成功")
             layout = QVBoxLayout(widget)
-            print(f"[SearchManager] 创建QVBoxLayout成功")
             layout.setContentsMargins(5, 5, 5, 5)
             
             if is_search_result and search_result:
-                name_label = QLabel(f"<b>{search_result.title}</b>")
+                title_prefix = "★ " if rank < 3 else ""
+                name_label = QLabel(f"<b>{title_prefix}{search_result.title}</b>")
                 desc_label = QLabel(f"<small>{search_result.description}</small>")
                 plugin_label = QLabel(f"<i>来自: {search_result.plugin_name}</i>")
                 plugin_label.setStyleSheet("color: #666;")
@@ -197,7 +264,8 @@ class SearchManager(QObject):
                 
                 item.setData(Qt.UserRole, {'type': 'search_result', 'result': search_result, 'plugin': plugin})
             else:
-                name_label = QLabel(f"<b>{plugin.get_name()}</b>")
+                title_prefix = "★ " if rank < 3 else ""
+                name_label = QLabel(f"<b>{title_prefix}{plugin.get_name()}</b>")
                 desc_label = QLabel(f"<small>{plugin.get_description()}</small>")
                 type_label = QLabel(f"<i>类型: {self._get_plugin_type_display(plugin.get_type())}</i>")
                 type_label.setStyleSheet("color: #666;")
@@ -208,19 +276,47 @@ class SearchManager(QObject):
                 
                 item.setData(Qt.UserRole, {'type': 'plugin', 'plugin': plugin})
             
-            desc_label.setWordWrap(True)
+            # Store ranks for sorting/debugging
+            item.setData(Qt.UserRole + 1, rank)
             
+            desc_label.setWordWrap(True)
             item.setSizeHint(widget.sizeHint())
-            print(f"[SearchManager] 开始添加到tool_list_widget")
-            self.tool_list_widget.addItem(item)
-            print(f"[SearchManager] addItem成功")
-            self.tool_list_widget.setItemWidget(item, widget)
-            print(f"[SearchManager] setItemWidget成功")
+            
+            # Insertion Sort
+            inserted = False
+            # Only pay complexity price for Top Items or if list has Top Items
+            # But we must compare against existing items to find slot
+            # Optimization: If rank is 999, append (unless list has 999s and we want stable sort? Append is stable)
+            # Actually, we definitely want to append 999s at the end.
+            # But what if a Rank 0 comes AFTER a Rank 999? It must be inserted before.
+            
+            if rank < 999:
+                for i in range(self.tool_list_widget.count()):
+                    existing_item = self.tool_list_widget.item(i)
+                    existing_rank = existing_item.data(Qt.UserRole + 1)
+                    if existing_rank is None: existing_rank = 999
+                    
+                    if rank < existing_rank:
+                        self.tool_list_widget.insertItem(i, item)
+                        self.tool_list_widget.setItemWidget(item, widget)
+                        inserted = True
+                        
+                        # 如果插入到了第一位（即成为了新的最佳匹配），强制选中它
+                        if i == 0:
+                             self.tool_list_widget.setCurrentRow(0)
+                        break
+            
+            if not inserted:
+                self.tool_list_widget.addItem(item)
+                self.tool_list_widget.setItemWidget(item, widget)
             
             # 如果这是第一项，自动选中
-            if self.tool_list_widget.count() == 1:
+            # 如果这是第一项（列表原本为空），自动选中
+            # 注意：如果是通过 insertItem 添加的第一项，在上面的 if i == 0 中已经处理了
+            # 这里主要处理 append(addItem) 的情况
+            if not inserted and self.tool_list_widget.count() == 1:
                 self.tool_list_widget.setCurrentRow(0)
-                print(f"[SearchManager] 自动选中第一项")
+
         except Exception as e:
             print(f"[SearchManager] 错误: {e}")
             import traceback
