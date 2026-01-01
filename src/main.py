@@ -25,12 +25,23 @@ def check_and_wake_instance():
             pass
         return False
 
+import argparse
+
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--silent", action="store_true", help="Start in system tray without showing window")
+    args, _ = parser.parse_known_args()
+
     if check_and_wake_instance():
         sys.exit(0)
 
     app = QApplication(sys.argv)
+    app.setQuitOnLastWindowClosed(False)
+    
     main_window = MainWindow()
+    
+    if not args.silent:
+        main_window.show_and_raise()
     
     port_file = ".port"
 

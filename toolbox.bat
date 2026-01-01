@@ -11,4 +11,4 @@ if exist ".port" (
 )
 
 start start_pyinstaller.exe
-start pytoolbox.exe
+start pytoolbox.exe --silent

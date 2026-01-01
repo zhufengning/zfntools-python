@@ -32,7 +32,7 @@ except ImportError:
 HAS_DEPENDENCIES = HAS_RAPIDOCR # Basic requirement
 
 TOOL_NAME = "图片文字识别(OCR)"
-TOOL_DESCRIPTION = "使用RapidOCR识别图片中的文字，支持截图粘贴和文件导入"
+TOOL_DESCRIPTION = "识别图片中的文字，支持latex模式"
 
 class OCRWorker(QObject):
     """OCR工作线程"""
@@ -409,7 +409,7 @@ class ToolWidget(QWidget):
 
         self.btn_recognize.setEnabled(False)
         self.progress_bar.setVisible(True)
-        self.status_label.setText("正在识别...")
+        self.status_label.setText("正在识别...（首次使用Latex模式时会自动下载模型）")
         self.result_area.clear()
         
         # Prepare source
