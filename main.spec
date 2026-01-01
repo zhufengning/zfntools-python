@@ -1,12 +1,61 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 
+import os
+
+def get_venv_site_packages():
+    # Helper to find site-packages in the current venv
+    # Assuming standard structure: .venv/Lib/site-packages on Windows
+    # Adjust if cross-compiling, but for local build this is fine
+    import site
+    return site.getsitepackages()[1] # usually the user/venv site-packages
+
+site_packages = get_venv_site_packages()
+keystone_path = os.path.join(site_packages, 'keystone')
+capstone_path = os.path.join(site_packages, 'capstone')
+
+# Recursive helper to find DLLs
+def find_dlls(base_path, target_folder_name):
+    binaries = []
+    if not os.path.exists(base_path): return binaries
+    for root, dirs, files in os.walk(base_path):
+        for file in files:
+            if file.lower().endswith('.dll'):
+                full_path = os.path.join(root, file)
+                # target path structure in dist, keep it relative-ish or flat?
+                # Usually capstone expects dll in its package root or specific lib dir.
+                # Simplest is to copy to package root in dist.
+                binaries.append((full_path, target_folder_name))
+    return binaries
+
+extra_binaries = []
+extra_binaries.extend(find_dlls(keystone_path, 'keystone'))
+extra_binaries.extend(find_dlls(capstone_path, 'capstone'))
+
+# Fallback: if recursive search failed (e.g. empty), try specifically pointing to where we think they are based on common installs
+# But recursive should catch them if they exist.
+
+from PyInstaller.utils.hooks import collect_all
+
+# ... (existing dll finding code) ...
+
+datas = [('src/plugins', 'plugins'), ('src/data', 'data')]
+binaries = extra_binaries
+hiddenimports = ['keystone', 'capstone', 'PIL']
+
+# Collect comprehensive data/binaries/imports for complex packages
+for pkg in ['rapidocr', 'rapidocr_onnxruntime', 'pix2text', "numpy", "doclayout_yolo", "cnocr", "spellchecker", "transformers.models.metaclip_2"]:
+    tmp_ret = collect_all(pkg)
+    datas += tmp_ret[0]
+    binaries += tmp_ret[1]
+    hiddenimports += tmp_ret[2]
+
 a = Analysis(
     ['src/main.py'],
     pathex=[],
-    binaries=[],
-    datas=[('src/plugins', 'plugins'), ('src/data', 'data')],
-    hiddenimports=[],
+    binaries=binaries,
+    datas=datas,
+    hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[],
@@ -26,7 +75,7 @@ exe = EXE(
     bootloader_ignore_signals=False,
     strip=False,
     upx=False,
-    console=False,
+    console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,
     target_arch=None,

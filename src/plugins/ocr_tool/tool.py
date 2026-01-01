@@ -15,18 +15,36 @@ from PySide6.QtCore import Qt, Signal, QThread, Slot, QObject, QMimeData, QBuffe
 
 from plugin_system import PluginType, WidgetPlugin
 
-# Try importing dependencies
+import inspect
+# Monkey patch inspect.getsource to avoid errors in frozen environment
+# when libraries (like older pix2text/rapidocr versions) try to read source code
+if not hasattr(inspect, '_original_getsource'):
+    _original_getsource = inspect.getsource
+    def _safe_getsource(obj):
+        try:
+            return _original_getsource(obj)
+        except (OSError, IOError):
+            return "pass" # Must return non-empty string to avoid IndexError in transformers logic (splitlines()[0])
+    inspect.getsource = _safe_getsource
+
+
+import traceback
+
 try:
     from rapidocr_onnxruntime import RapidOCR
     from PIL import Image
     HAS_RAPIDOCR = True
-except ImportError:
+except Exception as e:
+    print("Error importing RapidOCR:")
+    traceback.print_exc()
     HAS_RAPIDOCR = False
 
 try:
     from pix2text import Pix2Text
     HAS_PIX2TEXT = True
-except ImportError:
+except Exception as e:
+    print("Error importing Pix2Text:")
+    traceback.print_exc()
     HAS_PIX2TEXT = False
     
 HAS_DEPENDENCIES = HAS_RAPIDOCR # Basic requirement

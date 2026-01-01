@@ -11,11 +11,8 @@ from PySide6.QtGui import QFont, QColor, QSyntaxHighlighter, QTextCharFormat, QA
 
 from plugin_system import PluginType, WidgetPlugin
 
-try:
-    from capstone import *
-    HAS_CAPSTONE = True
-except ImportError:
-    HAS_CAPSTONE = False
+from capstone import *
+HAS_CAPSTONE = True
 
 TOOL_NAME = "HEX to ASM Converter"
 TOOL_DESCRIPTION = "Disassemble Hex machine code to Assembly using Capstone Engine"

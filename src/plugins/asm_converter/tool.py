@@ -10,11 +10,8 @@ from PySide6.QtGui import QFont, QColor, QSyntaxHighlighter, QTextCharFormat
 
 from plugin_system import PluginType, WidgetPlugin
 
-try:
-    from keystone import *
-    HAS_KEYSTONE = True
-except ImportError:
-    HAS_KEYSTONE = False
+from keystone import *
+HAS_KEYSTONE = True
 
 TOOL_NAME = "ASM to HEX Converter"
 TOOL_DESCRIPTION = "Convert Assembly code to Hex machine code using Keystone Engine"
