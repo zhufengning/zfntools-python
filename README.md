@@ -1,4 +1,4 @@
-# Python 工具箱
+# zfnbox
 
 > 注意：此项目完全以vibe coding的方式开发，请谨慎使用
 
@@ -8,7 +8,7 @@
 
 ## 项目简介
 
-Python 工具箱是一个桌面应用程序，它提供了一个统一的、美观的界面来发现和使用各种实用工具。应用程序的核心是其插件架构，允许开发者轻松地创建和集成新的功能。
+zfnbox是一个桌面应用程序，它提供了一个统一的、美观的界面来发现和使用各种实用工具。应用程序的核心是其插件架构，允许开发者轻松地创建和集成新的功能。
 
 ## 主要功能
 
@@ -319,7 +319,7 @@ uv run python main.py
 
 2.  **创建配置文件**: 创建或编辑 `~/.xbindkeysrc` 文件，添加以下内容：
     ```
-    # 唤醒 Python 工具箱
+    # 唤醒 zfnbox
     "sh -c 'if [ -f /path/to/your/project/.port ]; then echo -n \"wake\" | nc -u -w0 127.0.0.1 $(cat /path/to/your/project/.port); else /path/to/your/uv/bin/uv run python /path/to/your/project/main.py; fi'"
       alt + space
     ```

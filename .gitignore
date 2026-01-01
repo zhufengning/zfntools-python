@@ -202,3 +202,5 @@ python_toolbox.egg-info/
 .port
 
 *.exe
+
+src/data

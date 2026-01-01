@@ -28,7 +28,7 @@ class TrayManager:
             print(f"Warning: Tray icon not found at {icon_path}")
         
         # 设置提示文本
-        self.tray_icon.setToolTip("Python 工具箱")
+        self.tray_icon.setToolTip("zfnbox")
         
         # 创建菜单
         self._create_menu()

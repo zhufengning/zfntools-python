@@ -20,7 +20,7 @@ class MainWindow(QMainWindow):
     
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Python 工具箱")
+        self.setWindowTitle("zfnbox")
         self.setGeometry(100, 100, 900, 600)
 
         # 初始化设置管理器
