@@ -4,6 +4,17 @@ import io
 import threading
 import tempfile
 import time
+import sys
+
+# Monkey patch sys.stdout/stderr to avoid errors in no-console mode (pyinstaller --noconsole)
+# doclayout_yolo checks sys.stdout.encoding which fails if sys.stdout is None
+if sys.stdout is None:
+    class DummyStream:
+        encoding = 'utf-8'
+        def write(self, s): pass
+        def flush(self): pass
+    sys.stdout = DummyStream()
+    sys.stderr = DummyStream()
 from typing import Optional
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTextEdit, 
