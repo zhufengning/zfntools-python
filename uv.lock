@@ -164,6 +164,24 @@ wheels = [
 ]
 
 [[package]]
+name = "capstone"
+version = "5.0.6"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/d5/b0/1f126035a4cbc6f488b97e4bd57a46a28b6ba29ca8b938cbda840601a18a/capstone-5.0.6.tar.gz", hash = "sha256:b11a87d67751b006b9b44428d59c99512e6d6c89cf7dff8cdd92d9065628b5a0", size = 2945704 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/cd/9a/d9c11e090fa03dfc61a03a57ba44c6a07370f4ac5814f2a5804bfd40ee8b/capstone-5.0.6-py3-none-macosx_10_9_universal2.whl", hash = "sha256:0bca16e1c3ca1b928df6103b3889dcb6df7b05392d75a0b7af3508798148b899", size = 2177082 },
+    { url = "https://files.pythonhosted.org/packages/66/28/72a0be2325e6ee459f27cdcd835d3eee6fed5136321b5f7be41b41dc8656/capstone-5.0.6-py3-none-macosx_10_9_x86_64.whl", hash = "sha256:539191906a34ad1c573ec12b787b2caf154ea41175db6ded9def00aea8151099", size = 1180215 },
+    { url = "https://files.pythonhosted.org/packages/54/93/7b8fb02661d47a2822d5b640df804ef310417144af02e6db3446f174c4b5/capstone-5.0.6-py3-none-macosx_11_0_arm64.whl", hash = "sha256:e0b87b283905e4fc43635ca04cf26f4a5d9e8375852e5464d38938f3a28c207a", size = 1192757 },
+    { url = "https://files.pythonhosted.org/packages/ba/a2/d1bdb7260ade8165182979ea16098ef3a37c01316140511a611e549dbfe3/capstone-5.0.6-py3-none-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:fa7892f0c89455078c18f07d2d309fb07baa53061b8f9a63db1ea00d41a46726", size = 1458413 },
+    { url = "https://files.pythonhosted.org/packages/78/7f/ec0687bbe8f6b128f1d41d90ec7cedfd1aaaa4ecb1ae8d334acc7dad8013/capstone-5.0.6-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:0358855773100bb91ae6681fabce7299df83156945ba943f6211061a592c54a6", size = 1481605 },
+    { url = "https://files.pythonhosted.org/packages/fc/1d/77bb0f79e1dacdfdcc0679c747d9ca24cc621095e09bdb665e7dd0c580ae/capstone-5.0.6-py3-none-manylinux_2_5_i686.manylinux1_i686.manylinux_2_17_i686.manylinux2014_i686.whl", hash = "sha256:667d6466dab1522fa5e9659be5cf1aca83e4fc3da7d15d0e5e6047f71fb46c4a", size = 1480730 },
+    { url = "https://files.pythonhosted.org/packages/72/63/07437972f68d0b2ba13e1705a6994404c9c961afbadc342c5b6fcf1de652/capstone-5.0.6-py3-none-musllinux_1_2_aarch64.whl", hash = "sha256:45c0e25500dd8d283d3b70f2e10cebfec93ab8bdaf6af9a763a0a999b4705891", size = 1457992 },
+    { url = "https://files.pythonhosted.org/packages/0c/53/f371e86493a2ae659b5a493c3cc23122974e83a1f53d3a5638d7bb7ac371/capstone-5.0.6-py3-none-musllinux_1_2_i686.whl", hash = "sha256:22f1f2f118f8fa1d1c5c90bca90e75864d55e16349b3c03aaea0e86b4a45d2a9", size = 1484184 },
+    { url = "https://files.pythonhosted.org/packages/df/c3/8b842ae32949c3570581164619c2f69001c6d8da566dc2e490372032b0d6/capstone-5.0.6-py3-none-musllinux_1_2_x86_64.whl", hash = "sha256:bc23cf634f51d0e53bdd04ea53ccfff7fc9060dfe58dff1e1b260ce40e5538ff", size = 1485357 },
+    { url = "https://files.pythonhosted.org/packages/da/72/ff7894c2fb5716d9a3ce9c27ba34b29d991a11d8442d2ef0fcdc5564ba7e/capstone-5.0.6-py3-none-win_amd64.whl", hash = "sha256:761c3deae00b22ac697081cdae1383bb90659dd0d79387a09cf5bdbb22b17064", size = 1271345 },
+]
+
+[[package]]
 name = "certifi"
 version = "2025.11.12"
 source = { registry = "https://pypi.org/simple" }
@@ -678,6 +696,19 @@ wheels = [
 ]
 
 [[package]]
+name = "keystone-engine"
+version = "0.9.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/0a/65/3a2e7e55cc1db188869bbbacee60036828330e0ce57fc5f05a3167ab4b4d/keystone-engine-0.9.2.tar.gz", hash = "sha256:2f7af62dab0ce6c2732dbb4f31cfa2184a8a149e280b96b92ebc0db84c6e50f5", size = 2813059 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1c/ad/a609493a534049cae43660689b2c5908117746e238f12dc76619d68a223a/keystone_engine-0.9.2-py2.py3-none-macosx_10_14_x86_64.whl", hash = "sha256:dafcc3d9450c239cbc54148855b79c4b387777099c6d054005c835768cf955f2", size = 2950758 },
+    { url = "https://files.pythonhosted.org/packages/0b/cf/b8eb6956565e91a9a003b1c612765cfe007a1d0b1c6e667dc569ea519f51/keystone_engine-0.9.2-py2.py3-none-manylinux1_i686.whl", hash = "sha256:9e04dea5a2b50509b7b707abdb395de42772c40faa36131ea94482fba8dd5d9f", size = 1785427 },
+    { url = "https://files.pythonhosted.org/packages/01/5c/40ffbec589262f49ff7c463d96ff0bfab0fbd98d9d869c370a70853a13fb/keystone_engine-0.9.2-py2.py3-none-manylinux1_x86_64.whl", hash = "sha256:5a5316a34323620b1bba31dcfe9e4b4ca6f0c030e82fc7a151da7c8fbe81a379", size = 1766182 },
+    { url = "https://files.pythonhosted.org/packages/88/b9/a9d8b6837346b86bcdda56e5c3fe4ac51f98f4ed40bf71fb6bd8605516da/keystone_engine-0.9.2-py2.py3-none-win32.whl", hash = "sha256:9f81e480904a405ef008f1d9f0e4a05e37d2bd83c5218a27136e1a294b02c1f6", size = 1318239 },
+    { url = "https://files.pythonhosted.org/packages/a4/8d/58471cb026de45397b29ba4b37ae3e20b434fae14c4b92fd3e9771a7bac8/keystone_engine-0.9.2-py2.py3-none-win_amd64.whl", hash = "sha256:c91db1ff16d9d094e00d1827107d1b4afd5e63ce19b491a0140e660635000e8b", size = 1370823 },
+]
+
+[[package]]
 name = "kiwisolver"
 version = "1.4.9"
 source = { registry = "https://pypi.org/simple" }
@@ -1088,7 +1119,7 @@ name = "nvidia-cudnn-cu12"
 version = "9.10.2.21"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-cublas-cu12", marker = "(platform_machine != 'aarch64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux')" },
+    { name = "nvidia-cublas-cu12", marker = "platform_machine != 'aarch64' and sys_platform == 'linux'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ba/51/e123d997aa098c61d029f76663dedbfb9bc8dcf8c60cbd6adbe42f76d049/nvidia_cudnn_cu12-9.10.2.21-py3-none-manylinux_2_27_x86_64.whl", hash = "sha256:949452be657fa16687d0930933f032835951ef0892b37d2d53824d1a84dc97a8", size = 706758467 },
@@ -1099,7 +1130,7 @@ name = "nvidia-cufft-cu12"
 version = "11.3.3.83"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-nvjitlink-cu12", marker = "(platform_machine != 'aarch64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux')" },
+    { name = "nvidia-nvjitlink-cu12", marker = "platform_machine != 'aarch64' and sys_platform == 'linux'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/1f/13/ee4e00f30e676b66ae65b4f08cb5bcbb8392c03f54f2d5413ea99a5d1c80/nvidia_cufft_cu12-11.3.3.83-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:4d2dd21ec0b88cf61b62e6b43564355e5222e4a3fb394cac0db101f2dd0d4f74", size = 193118695 },
@@ -1126,9 +1157,9 @@ name = "nvidia-cusolver-cu12"
 version = "11.7.3.90"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-cublas-cu12", marker = "(platform_machine != 'aarch64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux')" },
-    { name = "nvidia-cusparse-cu12", marker = "(platform_machine != 'aarch64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux')" },
-    { name = "nvidia-nvjitlink-cu12", marker = "(platform_machine != 'aarch64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux')" },
+    { name = "nvidia-cublas-cu12", marker = "platform_machine != 'aarch64' and sys_platform == 'linux'" },
+    { name = "nvidia-cusparse-cu12", marker = "platform_machine != 'aarch64' and sys_platform == 'linux'" },
+    { name = "nvidia-nvjitlink-cu12", marker = "platform_machine != 'aarch64' and sys_platform == 'linux'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/85/48/9a13d2975803e8cf2777d5ed57b87a0b6ca2cc795f9a4f59796a910bfb80/nvidia_cusolver_cu12-11.7.3.90-py3-none-manylinux_2_27_x86_64.whl", hash = "sha256:4376c11ad263152bd50ea295c05370360776f8c3427b30991df774f9fb26c450", size = 267506905 },
@@ -1139,7 +1170,7 @@ name = "nvidia-cusparse-cu12"
 version = "12.5.8.93"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "nvidia-nvjitlink-cu12", marker = "(platform_machine != 'aarch64' and sys_platform == 'linux') or (sys_platform != 'darwin' and sys_platform != 'linux')" },
+    { name = "nvidia-nvjitlink-cu12", marker = "platform_machine != 'aarch64' and sys_platform == 'linux'" },
 ]
 wheels = [
     { url = "https://files.pythonhosted.org/packages/c2/f5/e1854cb2f2bcd4280c44736c93550cc300ff4b8c95ebe370d0aa7d2b473d/nvidia_cusparse_cu12-12.5.8.93-py3-none-manylinux2014_x86_64.manylinux_2_17_x86_64.whl", hash = "sha256:1ec05d76bbbd8b61b06a80e1eaf8cf4959c3d4ce8e711b65ebd0443bb0ebb13b", size = 288216466 },
@@ -4444,7 +4475,9 @@ name = "python-toolbox"
 version = "0.2.0"
 source = { editable = "." }
 dependencies = [
+    { name = "capstone" },
     { name = "global-hotkeys" },
+    { name = "keystone-engine" },
     { name = "nuitka" },
     { name = "pillow" },
     { name = "pix2text" },
@@ -4457,7 +4490,9 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "capstone" },
     { name = "global-hotkeys" },
+    { name = "keystone-engine" },
     { name = "nuitka", specifier = ">=2.7.13" },
     { name = "pillow" },
     { name = "pix2text" },

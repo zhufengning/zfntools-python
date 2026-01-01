@@ -17,6 +17,8 @@ dependencies = [
     "rapidocr-onnxruntime",
     "Pillow",
     "pix2text",
+    "keystone-engine",
+    "capstone",
 ]
 
 [tool.setuptools.packages.find]
