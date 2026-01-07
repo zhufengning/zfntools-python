@@ -50,13 +50,16 @@ class SearchManager(QObject):
 
         # 初始化使用统计
         self.usage_stats = UsageStatsManager(data_dir)
+        self._top_item_rank_by_key = {}
         
     def record_usage(self, item_data: dict):
         """记录项目使用情况"""
         try:
+            query = self.current_search_query
             if item_data['type'] == 'plugin':
                 plugin = item_data['plugin']
                 self.usage_stats.record_usage(
+                    query,
                     'plugin', 
                     plugin.get_name(), 
                     {}
@@ -73,6 +76,7 @@ class SearchManager(QObject):
                 # 使用 插件名:标题 作为唯一ID
                 item_id = f"{result.plugin_name}:{result.title}"
                 self.usage_stats.record_usage(
+                    query,
                     'search_result', 
                     item_id, 
                     data
@@ -115,6 +119,8 @@ class SearchManager(QObject):
         """开始异步搜索"""
         if query is None:
             query = self.current_search_query
+        query = (query or "").strip()
+        self.current_search_query = query
         
         self.stop_all_searches()
         
@@ -123,6 +129,7 @@ class SearchManager(QObject):
         
         self.tool_list_widget.clear()
         self.pending_results = {}
+        self._refresh_top_items()
         
         self._start_local_search(query)
         
@@ -223,26 +230,14 @@ class SearchManager(QObject):
             rank = 999
             
             # Generate ID to check against stats
+            item_type = 'search_result' if is_search_result else 'plugin'
             if is_search_result and search_result:
                 item_id = f"{search_result.plugin_name}:{search_result.title}"
-                # Check if this ID is in top items
-                # We need to fetch top items dynamically or cache them? 
-                # Caching them at start of search is better, but let's just fetch for now or cache in self.top_items_ids
-                # For efficiency, we should probably update self.top_items_ids in start_search
-                pass 
             elif plugin:
                 item_id = plugin.get_name()
                 
-            # Get current top items (we should cache this mapping properly)
-            # This is a bit expensive to do for every item, but with <100 items it's fine
-            top_items = self.usage_stats.get_top_items(3)
-            for i, stats in enumerate(top_items):
-                if stats['id'] == item_id:
-                    # check type matches
-                    expected_type = 'search_result' if is_search_result else 'plugin'
-                    if stats['type'] == expected_type:
-                        rank = i
-                        break
+            item_key = self.usage_stats.make_item_key(item_type, item_id)
+            rank = self._top_item_rank_by_key.get(item_key, 999)
             
             print(f"[SearchManager] 添加到列表: {item_id}, rank={rank}")
             
@@ -336,5 +331,14 @@ class SearchManager(QObject):
     def update_tool_list(self):
         """显示所有已加载的插件"""
         self.tool_list_widget.clear()
+        self._refresh_top_items()
         for plugin in self.plugins:
             self.add_plugin_to_list(plugin, is_search_result=False)
+
+    def _refresh_top_items(self):
+        """根据当前搜索词刷新置顶项映射"""
+        self._top_item_rank_by_key = {}
+        top_items = self.usage_stats.get_top_items(self.current_search_query, 3)
+        for i, stats in enumerate(top_items):
+            item_key = self.usage_stats.make_item_key(stats["type"], stats["id"])
+            self._top_item_rank_by_key[item_key] = i
