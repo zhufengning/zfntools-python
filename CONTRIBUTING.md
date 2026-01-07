@@ -171,6 +171,14 @@ class PluginType(Enum):
 - 插件数据目录管理
 - 搜索结果封装和处理
 
+#### 插件数据目录管理（开发规范）
+
+插件需要持久化配置/缓存/用户数据时，统一使用 `plugin_instance.get_data_dir()` 获取目录，不要自行写到项目根目录或硬编码到用户目录。
+
+- Widget 插件建议在 `create_widget()` 中把插件实例传入：`return MyWidget(self)`
+- Widget 内通过 `self.plugin.get_data_dir()` 获取数据目录（开发环境通常是 `src/data/plugins/<plugin_name>/`）
+- `src/data` 已在 `.gitignore` 中忽略，插件数据不会被提交到仓库
+
 ### 8. search_engine.py - 智能搜索引擎
 
 **作用**：提供高级搜索功能，支持多种匹配算法。

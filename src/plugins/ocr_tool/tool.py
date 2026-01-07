@@ -5,6 +5,8 @@ import threading
 import tempfile
 import time
 import sys
+import json
+import base64
 
 # Monkey patch sys.stdout/stderr to avoid errors in no-console mode (pyinstaller --noconsole)
 # doclayout_yolo checks sys.stdout.encoding which fails if sys.stdout is None
@@ -15,11 +17,12 @@ if sys.stdout is None:
         def flush(self): pass
     sys.stdout = DummyStream()
     sys.stderr = DummyStream()
-from typing import Optional
+from typing import Optional, Any, cast
 from PySide6.QtWidgets import (
-    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTextEdit, 
+    QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTextEdit,
     QLabel, QFileDialog, QScrollArea, QSplitter, QApplication,
-    QProgressBar, QMessageBox, QCheckBox
+    QProgressBar, QMessageBox, QCheckBox, QComboBox, QDialog,
+    QFormLayout, QLineEdit, QDialogButtonBox
 )
 from PySide6.QtGui import QPixmap, QImage, QPainter, QDragEnterEvent, QDropEvent, QIcon, QAction, QKeySequence, QShortcut, QWheelEvent
 from PySide6.QtCore import Qt, Signal, QThread, Slot, QObject, QMimeData, QBuffer, QIODevice, QEvent
@@ -41,6 +44,10 @@ if not hasattr(inspect, '_original_getsource'):
 
 import traceback
 
+RapidOCR: Any = None
+Image: Any = None
+Pix2Text: Any = None
+
 try:
     from rapidocr_onnxruntime import RapidOCR
     from PIL import Image
@@ -61,77 +68,282 @@ except Exception as e:
 HAS_DEPENDENCIES = HAS_RAPIDOCR # Basic requirement
 
 TOOL_NAME = "图片文字识别(OCR)"
-TOOL_DESCRIPTION = "识别图片中的文字，支持latex模式"
+TOOL_DESCRIPTION = "识别图片中的文字，支持 RapidOCR / Pix2Text / AI 模式"
+
+DEFAULT_OCR_MODE = "text"
+
+DEFAULT_OPENAI_BASE_URL = "https://api.openai.com/v1"
+DEFAULT_OPENAI_MODEL = "gpt-4o-mini"
+DEFAULT_OPENAI_API = "responses"  # "responses" | "chat_completions"
+DEFAULT_AI_PROMPT = "对于输入的图片，请直接输出其中的文字识别结果。使用markdown和latex语法。"
+
+
+def _get_openai_config_path_in_dir(config_dir: str) -> str:
+    os.makedirs(config_dir, exist_ok=True)
+    return os.path.join(config_dir, "openai_ocr.json")
+
+
+def _get_ocr_tool_config_path_in_dir(config_dir: str) -> str:
+    os.makedirs(config_dir, exist_ok=True)
+    return os.path.join(config_dir, "ocr_tool.json")
+
+
+def load_ocr_tool_config(config_dir: str) -> dict:
+    config_path = _get_ocr_tool_config_path_in_dir(config_dir)
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    return data
+        except Exception:
+            pass
+
+    return {"last_mode": DEFAULT_OCR_MODE}
+
+
+def save_ocr_tool_config(config: dict, config_dir: str) -> None:
+    config_path = _get_ocr_tool_config_path_in_dir(config_dir)
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=2, ensure_ascii=False)
+
+
+def load_openai_config(config_dir: str) -> dict:
+    config_path = _get_openai_config_path_in_dir(config_dir)
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+                if isinstance(data, dict):
+                    return data
+        except Exception:
+            pass
+
+    return {
+        "base_url": DEFAULT_OPENAI_BASE_URL,
+        "api_key": "",
+        "model": DEFAULT_OPENAI_MODEL,
+        "api": DEFAULT_OPENAI_API,
+        "prompt": DEFAULT_AI_PROMPT,
+    }
+
+
+def save_openai_config(config: dict, config_dir: str) -> None:
+    config_path = _get_openai_config_path_in_dir(config_dir)
+    with open(config_path, "w", encoding="utf-8") as f:
+        json.dump(config, f, indent=2, ensure_ascii=False)
+
+
+class OpenAiSettingsDialog(QDialog):
+    def __init__(self, parent=None, config_dir: str = ""):
+        super().__init__(parent)
+        self.setWindowTitle("OCR AI 设置")
+        if not config_dir:
+            raise ValueError("config_dir is required for OpenAiSettingsDialog")
+        self.config_dir = config_dir
+
+        layout = QVBoxLayout(self)
+        form = QFormLayout()
+
+        self.base_url_input = QLineEdit()
+        self.base_url_input.setPlaceholderText(DEFAULT_OPENAI_BASE_URL)
+
+        self.api_key_input = QLineEdit()
+        self.api_key_input.setEchoMode(QLineEdit.EchoMode.Password)
+        self.api_key_input.setPlaceholderText("sk-... / 或你的网关 Key")
+
+        self.model_input = QLineEdit()
+        self.model_input.setPlaceholderText(DEFAULT_OPENAI_MODEL)
+
+        self.api_mode_combo = QComboBox()
+        self.api_mode_combo.addItem("Responses API (推荐)", "responses")
+        self.api_mode_combo.addItem("Chat Completions", "chat_completions")
+
+        self.prompt_input = QTextEdit()
+        self.prompt_input.setPlaceholderText(DEFAULT_AI_PROMPT)
+        self.prompt_input.setFixedHeight(120)
+
+        form.addRow("Base URL", self.base_url_input)
+        form.addRow("API Key", self.api_key_input)
+        form.addRow("Model", self.model_input)
+        form.addRow("API", self.api_mode_combo)
+        form.addRow("Prompt", self.prompt_input)
+
+        layout.addLayout(form)
+
+        buttons = QDialogButtonBox(QDialogButtonBox.StandardButton.Save | QDialogButtonBox.StandardButton.Cancel)
+        buttons.accepted.connect(self.accept)
+        buttons.rejected.connect(self.reject)
+        layout.addWidget(buttons)
+
+        self.load_from_disk()
+
+    def load_from_disk(self):
+        cfg = load_openai_config(self.config_dir)
+        self.base_url_input.setText(cfg.get("base_url", DEFAULT_OPENAI_BASE_URL) or "")
+        self.api_key_input.setText(cfg.get("api_key", "") or "")
+        self.model_input.setText(cfg.get("model", DEFAULT_OPENAI_MODEL) or "")
+
+        api_mode = cfg.get("api", DEFAULT_OPENAI_API) or DEFAULT_OPENAI_API
+        index = self.api_mode_combo.findData(api_mode)
+        if index >= 0:
+            self.api_mode_combo.setCurrentIndex(index)
+
+        self.prompt_input.setPlainText(cfg.get("prompt", DEFAULT_AI_PROMPT) or "")
+
+    def get_config(self) -> dict:
+        base_url = self.base_url_input.text().strip() or DEFAULT_OPENAI_BASE_URL
+        api_key = self.api_key_input.text().strip()
+        model = self.model_input.text().strip() or DEFAULT_OPENAI_MODEL
+        api_mode = self.api_mode_combo.currentData() or DEFAULT_OPENAI_API
+        prompt = self.prompt_input.toPlainText().strip() or DEFAULT_AI_PROMPT
+
+        return {
+            "base_url": base_url,
+            "api_key": api_key,
+            "model": model,
+            "api": api_mode,
+            "prompt": prompt,
+        }
 
 class OCRWorker(QObject):
     """OCR工作线程"""
-    finished = Signal(object) # (result_text, elapse_time) or (error_msg, None)
-    
-    def __init__(self, image_path_or_bytes, mode='text'):
+
+    finished = Signal(object)  # (result_text, elapse_time) or (error_msg, None)
+
+    def __init__(self, image_path_or_bytes, mode: str = "text", ai_config: Optional[dict] = None):
         super().__init__()
         self.image_source = image_path_or_bytes
         self.mode = mode
-        
+        self.ai_config = ai_config or {}
+
     def run(self):
         try:
-            if not HAS_DEPENDENCIES:
-                self.finished.emit(("错误: 缺少依赖库 rapidocr-onnxruntime 或 Pillow。\n请确保已安装: uv add rapidocr-onnxruntime Pillow", 0))
+            if self.mode == "ai":
+                text_output = self._run_ai_ocr()
+                self.finished.emit((text_output, 0))
                 return
 
-            # Initialize engine (can be slow, maybe better to initialize once globally or in main thread if thread-safe? 
-            # RapidOCR instances are lightweight but loading models takes time. 
-            # Ideally we keep one instance, but for simplicity let's create here for now or optimize later.)
-            # To catch init errors early:
-            # Run OCR
-            if self.mode == 'latex':
+            if not HAS_DEPENDENCIES:
+                self.finished.emit((
+                    "错误: 缺少依赖库 rapidocr-onnxruntime 或 Pillow。\n请确保已安装: uv add rapidocr-onnxruntime Pillow",
+                    0,
+                ))
+                return
+
+            if self.mode == "latex":
                 if not HAS_PIX2TEXT:
-                     self.finished.emit(("错误: 缺少 pix2text 库，无法使用 LaTeX 模式。\n请运行: uv add pix2text", 0))
-                     return
-                
-                # Initialize Pix2Text
-                # It might be slow on first run to download models
+                    self.finished.emit(("错误: 缺少 pix2text 库，无法使用 Pix2Text 模式。\n请运行: uv add pix2text", 0))
+                    return
+
+                if Pix2Text is None or Image is None:
+                    self.finished.emit(("错误: Pix2Text/Pillow 未正确加载，无法使用 Pix2Text 模式。", 0))
+                    return
+
                 p2t = Pix2Text.from_config()
-                # recognize_text method handles both text and formula? actually .recognize() is the main entry
-                # usage: p2t.recognize(img, resized_shape=608, return_text=True)
-                # It accepts path or PIL Image or numpy array
-                
-                # Convert bytes to PIL Image if needed, or pass path
+
                 source = self.image_source
                 if isinstance(source, bytes):
                     source = Image.open(io.BytesIO(source))
-                
-                # Pix2Text recognize returns text directly if return_text=True? 
-                # Or dict? Check docs. standard is: 
-                # out = p2t.recognize(img) -> returns str (if simple) or detailed dict
-                # Actually usage: 
-                # outs = img_ocr.recognize(img_path) 
-                # print(outs)
-                
-                # Let's try simple call
-                result = p2t.recognize(source) # Returns str usually for mixed content
+
+                result = p2t.recognize(source)
+
                 text_output = str(result)
-                
             else:
-                # Text Mode (RapidOCR)
+                if RapidOCR is None:
+                    self.finished.emit(("错误: RapidOCR 未正确加载，无法使用 RapidOCR 模式。", 0))
+                    return
+
                 engine = RapidOCR()
-                result, elapse = engine(self.image_source)
-                
-                text_output = ""
+                result, _elapse = engine(self.image_source)
+
                 if result:
                     texts = [line[1] for line in result]
                     text_output = "\n".join(texts)
                 else:
                     text_output = "未识别到文字"
-                
+
             self.finished.emit((text_output, 0))
-            
         except Exception as e:
             import traceback
+
             self.finished.emit((f"识别出错: {str(e)}\n{traceback.format_exc()}", 0))
 
+    def _run_ai_ocr(self) -> str:
+        try:
+            from openai import OpenAI
+        except Exception:
+            return "错误: 缺少 openai SDK。请运行: uv add openai"
+
+        api_key = (self.ai_config.get("api_key") or "").strip()
+        if not api_key:
+            return "错误: 未配置 OpenAI API Key，请点击“AI设置”进行配置。"
+
+        base_url = (self.ai_config.get("base_url") or DEFAULT_OPENAI_BASE_URL).strip()
+        model = (self.ai_config.get("model") or DEFAULT_OPENAI_MODEL).strip()
+        prompt = (self.ai_config.get("prompt") or DEFAULT_AI_PROMPT).strip()
+
+        image_bytes = self.image_source
+        if not isinstance(image_bytes, (bytes, bytearray)):
+            try:
+                with open(str(self.image_source), "rb") as f:
+                    image_bytes = f.read()
+            except Exception as e:
+                return f"错误: 无法读取图片: {e}"
+
+        data_url = "data:image/png;base64," + base64.b64encode(image_bytes).decode("ascii")
+
+        client = OpenAI(api_key=api_key, base_url=base_url)
+
+        api_mode = (self.ai_config.get("api") or DEFAULT_OPENAI_API).strip() or DEFAULT_OPENAI_API
+
+        if api_mode == "responses":
+            if not hasattr(client, "responses"):
+                return "错误: 当前 openai SDK 不支持 Responses API，请在设置中切换为 Chat Completions。"
+
+            resp = client.responses.create(
+                model=model,
+                input=cast(Any, [
+                    {
+                        "role": "user",
+                        "content": [
+                            {"type": "input_text", "text": prompt},
+                            {"type": "input_image", "image_url": data_url},
+                        ],
+                    }
+                ]),
+            )
+
+            output_text = getattr(resp, "output_text", None)
+            if output_text:
+                return str(output_text).strip()
+
+            return str(resp)
+
+        # chat_completions
+        resp = client.chat.completions.create(
+            model=model,
+            messages=cast(Any, [
+                {
+                    "role": "user",
+                    "content": [
+                        {"type": "text", "text": prompt},
+                        {"type": "image_url", "image_url": {"url": data_url}},
+                    ],
+                }
+            ]),
+        )
+
+        try:
+            return (resp.choices[0].message.content or "").strip()
+        except Exception:
+            return str(resp)
+
 class ToolWidget(QWidget):
-    def __init__(self):
+    def __init__(self, plugin_instance):
         super().__init__()
+        self.plugin = plugin_instance
+        self.data_dir = self.plugin.get_data_dir()
         self.worker_thread = None
         self.setup_ui()
         self.ocr_engine = None
@@ -183,12 +395,21 @@ class ToolWidget(QWidget):
         
         toolbar_layout.addWidget(self.btn_select)
         toolbar_layout.addWidget(self.btn_paste)
-        
-        # LaTeX Checkbox
-        self.chk_latex = QCheckBox("LaTeX 公式模式")
-        self.chk_latex.setToolTip("开启后使用 Pix2Text 识别数学公式")
-        toolbar_layout.addWidget(self.chk_latex)
-        
+
+        self.mode_combo = QComboBox()
+        self.mode_combo.addItem("RapidOCR 模式", "text")
+        self.mode_combo.addItem("Pix2Text 模式", "latex")
+        self.mode_combo.addItem("AI 模式", "ai")
+        self.mode_combo.setToolTip("RapidOCR 模式: RapidOCR\nPix2Text 模式: Pix2Text\nAI 模式: OpenAI 视觉模型")
+        self._restore_last_mode()
+        self.mode_combo.currentIndexChanged.connect(self._persist_current_mode)
+        toolbar_layout.addWidget(self.mode_combo)
+
+        self.btn_ai_settings = QPushButton("AI设置")
+        self.btn_ai_settings.setToolTip("配置 OpenAI Base URL / Key / Model / Prompt")
+        self.btn_ai_settings.clicked.connect(self.open_ai_settings)
+        toolbar_layout.addWidget(self.btn_ai_settings)
+
         toolbar_layout.addWidget(self.btn_recognize)
         toolbar_layout.addStretch()
         
@@ -201,7 +422,7 @@ class ToolWidget(QWidget):
             layout.addWidget(warning_label)
         
         # Main content (Splitter)
-        splitter = QSplitter(Qt.Horizontal)
+        splitter = QSplitter(Qt.Orientation.Horizontal)
         
         # Left Side Container (Zoom Controls + Image)
         left_widget = QWidget()
@@ -236,18 +457,18 @@ class ToolWidget(QWidget):
         # Left: Image Preview
         self.image_container = QScrollArea()
         self.image_container.setWidgetResizable(False) # Important for zoom
-        self.image_container.setAlignment(Qt.AlignCenter) # Center content
+        self.image_container.setAlignment(Qt.AlignmentFlag.AlignCenter) # Center content
         self.image_container.setStyleSheet("QScrollArea { background-color: #e0e0e0; }") # Distinct background
         
         # Install event filter for wheel zoom
         self.image_container.viewport().installEventFilter(self)
         
         self.enable_drag_label = QLabel("请选择图片、粘贴图片\n或者将图片拖拽到此处")
-        self.enable_drag_label.setAlignment(Qt.AlignCenter)
+        self.enable_drag_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.enable_drag_label.setStyleSheet("QLabel { background-color: #f0f0f0; border: 2px dashed #ccc; color: #888; font-size: 14px; padding: 20px; }")
         
         self.image_preview = QLabel()
-        self.image_preview.setAlignment(Qt.AlignCenter)
+        self.image_preview.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.image_preview.hide() # Initially hidden
         
         # We need a wrapper widget for scroll area to switch between label and preview
@@ -256,7 +477,7 @@ class ToolWidget(QWidget):
         self.preview_layout.addWidget(self.enable_drag_label)
         self.preview_layout.addWidget(self.image_preview)
         self.preview_layout.setContentsMargins(0,0,0,0)
-        self.preview_layout.setAlignment(Qt.AlignCenter)
+        self.preview_layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
         
         self.image_container.setWidget(self.preview_wrapper)
         left_layout.addWidget(self.image_container)
@@ -293,14 +514,15 @@ class ToolWidget(QWidget):
         layout.addWidget(self.status_container)
 
         # Shortcuts
-        self.paste_shortcut = QShortcut(QKeySequence.Paste, self)
+        self.paste_shortcut = QShortcut(QKeySequence.StandardKey.Paste, self)
         self.paste_shortcut.activated.connect(self.paste_image)
 
     def eventFilter(self, source, event: QEvent):
         """Handle wheel event for zoom"""
-        if source == self.image_container.viewport() and event.type() == QEvent.Wheel:
-            if event.modifiers() & Qt.ControlModifier:
-                self.handle_wheel_zoom(event)
+        if source == self.image_container.viewport() and event.type() == QEvent.Type.Wheel:
+            wheel_event = cast(QWheelEvent, event)
+            if wheel_event.modifiers() & Qt.KeyboardModifier.ControlModifier:
+                self.handle_wheel_zoom(wheel_event)
                 return True
         return super().eventFilter(source, event)
 
@@ -334,7 +556,11 @@ class ToolWidget(QWidget):
         
         # Limit max/min zoom?
         
-        new_pixmap = self.original_pixmap.scaled(new_size, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+        new_pixmap = self.original_pixmap.scaled(
+            new_size,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
         self.image_preview.setPixmap(new_pixmap)
         self.image_preview.adjustSize()
         self.preview_wrapper.adjustSize()
@@ -426,44 +652,72 @@ class ToolWidget(QWidget):
         """Save QImage to a format suitable for OCR (bytes or temp file)"""
         # Save to a temporary buffer
         buffer = QBuffer()
-        buffer.open(QIODevice.ReadWrite)
+        buffer.open(QIODevice.OpenModeFlag.ReadWrite)
         qimage.save(buffer, "PNG")
         self.current_image_bytes = buffer.data().data() # Convert QByteArray to bytes
         self.status_label.setText("图片已就绪 (来自剪贴板/拖拽)")
 
+    def open_ai_settings(self):
+        dialog = OpenAiSettingsDialog(self, config_dir=self.data_dir)
+        if dialog.exec() == QDialog.DialogCode.Accepted:
+            cfg = dialog.get_config()
+            save_openai_config(cfg, self.data_dir)
+
     def start_recognition(self):
-        if not HAS_DEPENDENCIES:
-             QMessageBox.critical(self, "错误", "缺少 rapidocr-onnxruntime 库")
-             return
+        mode = "text"
+        if hasattr(self, "mode_combo"):
+            mode = self.mode_combo.currentData() or DEFAULT_OCR_MODE
+
+        ai_config = None
+        if mode == "ai":
+            ai_config = load_openai_config(self.data_dir)
+            if not (ai_config.get("api_key") or "").strip():
+                QMessageBox.information(self, "AI模式", "请先配置 OpenAI Key / Model")
+                self.open_ai_settings()
+                ai_config = load_openai_config(self.data_dir)
+                if not (ai_config.get("api_key") or "").strip():
+                    return
+        else:
+            if not HAS_DEPENDENCIES:
+                QMessageBox.critical(self, "错误", "缺少 rapidocr-onnxruntime 或 Pillow（RapidOCR/Pix2Text 模式需要）")
+                return
 
         self.btn_recognize.setEnabled(False)
         self.progress_bar.setVisible(True)
-        self.status_label.setText("正在识别...（首次使用Latex模式时会自动下载模型）")
+        mode_label = self.mode_combo.currentText() if hasattr(self, "mode_combo") else mode
+        self.status_label.setText(f"正在识别... ({mode_label})")
         self.result_area.clear()
-        
-        # Prepare source
-        source = None
+
+        # Prepare bytes source for all modes
+        source_bytes = None
         if self.current_image_path:
-            source = self.current_image_path
-        elif hasattr(self, 'current_image_bytes'):
-            source = self.current_image_bytes
+            try:
+                with open(self.current_image_path, "rb") as f:
+                    source_bytes = f.read()
+            except Exception as e:
+                QMessageBox.critical(self, "错误", f"无法读取图片文件: {e}")
+                self.progress_bar.setVisible(False)
+                self.btn_recognize.setEnabled(True)
+                return
+        elif hasattr(self, "current_image_bytes"):
+            source_bytes = self.current_image_bytes
         else:
-            # Should not happen
+            self.progress_bar.setVisible(False)
+            self.btn_recognize.setEnabled(True)
             return
 
         # Start Thread
-        mode = 'latex' if self.chk_latex.isChecked() else 'text'
-        self.thread = QThread()
-        self.worker = OCRWorker(source, mode)
-        self.worker.moveToThread(self.thread)
-        
-        self.thread.started.connect(self.worker.run)
+        self.worker_thread = QThread()
+        self.worker = OCRWorker(source_bytes, mode, ai_config)
+        self.worker.moveToThread(self.worker_thread)
+
+        self.worker_thread.started.connect(self.worker.run)
         self.worker.finished.connect(self.on_recognition_finished)
-        self.worker.finished.connect(self.thread.quit)
+        self.worker.finished.connect(self.worker_thread.quit)
         self.worker.finished.connect(self.worker.deleteLater)
-        self.thread.finished.connect(self.thread.deleteLater)
-        
-        self.thread.start()
+        self.worker_thread.finished.connect(self.worker_thread.deleteLater)
+
+        self.worker_thread.start()
 
     def on_recognition_finished(self, result):
         text, elapse = result
@@ -474,7 +728,27 @@ class ToolWidget(QWidget):
         
         self.result_area.setText(text)
 
+    def _restore_last_mode(self) -> None:
+        if not hasattr(self, "mode_combo"):
+            return
+
+        cfg = load_ocr_tool_config(self.data_dir)
+        last_mode = cfg.get("last_mode", DEFAULT_OCR_MODE)
+        index = self.mode_combo.findData(last_mode)
+        if index >= 0:
+            self.mode_combo.setCurrentIndex(index)
+
+    def _persist_current_mode(self, _index: int) -> None:
+        if not hasattr(self, "mode_combo"):
+            return
+
+        mode = self.mode_combo.currentData() or DEFAULT_OCR_MODE
+        save_ocr_tool_config({"last_mode": mode}, self.data_dir)
+
 class OCRPlugin(WidgetPlugin):
+    def __init__(self, plugin_dir: str = ""):
+        super().__init__(plugin_dir)
+
     def get_name(self) -> str:
         return TOOL_NAME
     
@@ -485,4 +759,4 @@ class OCRPlugin(WidgetPlugin):
         return PluginType.WIDGET
     
     def create_widget(self) -> QWidget:
-        return ToolWidget()
+        return ToolWidget(self)

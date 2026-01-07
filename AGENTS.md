@@ -1,0 +1,3 @@
+使用uv管理python依赖和运行项目。如无特别要求，编写代码后不要运行项目。
+修改后如果影响了插件开发方式或用户体验，则更新README.md；如果影响了项目结构，则更新CONTRIBUTING.md。修复bug时不更新README.md和CONTRIBUTING.md。
+CONTRIBUTING.md中包含项目结构信息，README.md中包含插件开发规范，在需要时可以阅读。
